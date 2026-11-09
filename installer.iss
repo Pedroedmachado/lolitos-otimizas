@@ -1,9 +1,12 @@
-﻿; Instalador do Lolitos Otimizações (Inno Setup 6).
+﻿; Instalador do Lolitos Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
-#define AppName "Lolitos Otimizações"
-#define AppVersion "1.3.2"
-#define AppExe "LolitosOtimizacoes.exe"
-#define AppId "LolitosOtimizacoes"
+#define AppName "Lolitos Control"
+#define AppVersion "1.4.0"
+#define AppExe "LolitosControl.exe"
+#define OldExe "LolitosOtimizacoes.exe"
+#define OldName "Lolitos Otimizações"
+#define AppId "LolitosControl"
+#define OldAppId "LolitosOtimizacoes"
 
 [Setup]
 AppId={{6B1F3C2E-4A5D-4E7B-9C1A-1F0B0D5E9A77}
@@ -13,13 +16,13 @@ AppVerName={#AppName} {#AppVersion}
 AppPublisher=Lolitos
 VersionInfoVersion={#AppVersion}
 VersionInfoDescription={#AppName} - instalador
-DefaultDirName={autopf}\Lolitos Otimizacoes
+DefaultDirName={autopf}\Lolitos Control
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableDirPage=auto
 LicenseFile=legal\TERMOS_DE_USO.txt
 OutputDir=dist
-OutputBaseFilename=LolitosOtimizacoes-{#AppVersion}-Setup
+OutputBaseFilename=LolitosControl-{#AppVersion}-Setup
 SetupIconFile=build\lolitos.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
@@ -46,8 +49,14 @@ Name: "desktopicon"; Description: "Criar atalho na área de trabalho"
 Name: "autostart"; Description: "Iniciar com o Windows (minimizado na bandeja, para o overlay e a tecla funcionarem)"; Flags: unchecked
 
 [Files]
-Source: "dist\LolitosOtimizacoes\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "dist\LolitosControl\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "legal\TERMOS_DE_USO.txt"; DestDir: "{app}\legal"; Flags: ignoreversion
+
+[InstallDelete]
+; restos da versão com o nome antigo (Lolitos Otimizações, até a 1.3.x)
+Type: files; Name: "{app}\{#OldExe}"
+Type: files; Name: "{autodesktop}\{#OldName}.lnk"
+Type: filesandordirs; Name: "{autoprograms}\{#OldName}"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -61,6 +70,7 @@ Filename: "{app}\{#AppExe}"; Description: "Abrir o {#AppName} agora"; Flags: now
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM {#AppExe}"; Flags: runhidden; RunOnceId: "KillApp"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#OldAppId}"; Flags: runhidden; RunOnceId: "DelOldTask"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#AppId}"; Flags: runhidden; RunOnceId: "DelTask"
 
 [Code]
@@ -70,6 +80,7 @@ var
 begin
   { fecha o app (inclusive na bandeja) antes de copiar os arquivos }
   Exec('taskkill.exe', '/F /IM {#AppExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Exec('taskkill.exe', '/F /IM {#OldExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Result := '';
 end;
 

@@ -1,6 +1,7 @@
-"""Lolitos Otimizações — otimizador de Windows para jogos (com módulo especial para Black Desert Online)."""
+"""Lolitos Control — otimizador de Windows para jogos (com módulo especial para Black Desert Online)."""
 
-APP_NAME = "Lolitos Otimizações"
-APP_ID = "LolitosOtimizacoes"          # nome de pasta/arquivos (sem acento)
-VERSION = "1.3.2"
+APP_NAME = "Lolitos Control"
+APP_ID = "LolitosControl"              # nome de pasta/arquivos (sem acento)
+OLD_APP_ID = "LolitosOtimizacoes"      # nome usado até a 1.3.x (migração)
+VERSION = "1.4.0"
 POWER_PLAN_NAME = "Lolitos Desempenho"

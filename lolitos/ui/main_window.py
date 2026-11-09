@@ -62,8 +62,8 @@ class MainWindow(QMainWindow):
         sl = QVBoxLayout(side)
         sl.setContentsMargins(12, 18, 12, 14)
         sl.setSpacing(3)
-        sl.addWidget(label("Lolitos", "brand"))
-        sl.addWidget(label("Otimizações para jogos", "brandsub"))
+        sl.addWidget(label("Lolitos Control", "brand"))
+        sl.addWidget(label("Otimização para jogos", "brandsub"))
         sl.addSpacing(14)
         self.stack = QStackedWidget()
         self.group = QButtonGroup(self)
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
             html += "".join(f"<p><b>{t}</b><br>{txt}</p>" for t, txt in adv)
             html += ("<p>Aplicar agora os ajustes recomendados para este PC? Um ponto de restauração é criado antes "
                      "e tudo pode ser desfeito em Restauração.</p>")
-            if confirm(self, "Bem-vindo ao Lolitos Otimizações", html, yes="Aplicar o recomendado",
+            if confirm(self, "Bem-vindo ao Lolitos Control", html, yes="Aplicar o recomendado",
                        no="Agora não"):
                 TaskDialog(self, "Otimizando para este PC", boost,
                            on_done=lambda _: self.changed()).exec()

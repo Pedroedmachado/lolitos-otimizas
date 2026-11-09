@@ -1,7 +1,7 @@
 """FPS via PresentMon (Intel, MIT) — lê os eventos de apresentação de quadros que o próprio Windows publica (ETW).
 
 Não injeta nada no jogo. Precisa do PresentMon (console) e de administrador.
-Coloque o PresentMon.exe em %LOCALAPPDATA%\\LolitosOtimizacoes\\tools\\ ou instale pelo winget."""
+Coloque o PresentMon.exe em %LOCALAPPDATA%\\LolitosControl\\tools\\ ou instale pelo winget."""
 from __future__ import annotations
 
 import csv

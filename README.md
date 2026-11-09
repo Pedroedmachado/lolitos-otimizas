@@ -1,7 +1,7 @@
-# Lolitos Otimizações
+# Lolitos Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.3.2.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.4.0.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,11 +13,11 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosOtimizacoes-1.3.2-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.4.0-Setup.exe`.
 O instalador tem assistente em português, termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
-Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosOtimizacoes`.
+Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosControl`.
 
 ## O que tem
 
@@ -35,6 +35,12 @@ Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosOtimi
 | **Hardware** | CPU, RAM (XMP/EXPO, dual channel, slots), placa-mãe/BIOS, GPU (link PCIe via NVML), monitores, discos, TPM/Secure Boot; monitor ao vivo com gravação em CSV |
 | **Overlay** | FPS (via PresentMon), CPU/GPU, temperaturas, VRAM, RAM e ping por cima do jogo; tecla global |
 | **Restauração** | Histórico com desfazer item a item, reverter tudo, pontos de restauração |
+
+## Novidades da 1.4.0
+
+* Novo nome: **Lolitos Control** (antes Lolitos Otimizações) e novo ícone: um **L azul**.
+* Quem tem a versão antiga pode instalar por cima: o instalador remove o executável e os atalhos antigos, e o app
+  traz histórico, backups e configurações da pasta antiga.
 
 ## Novidades da 1.3.2
 

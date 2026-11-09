@@ -11,8 +11,22 @@ from lolitos.ui.icon import pixmap  # noqa: E402
 
 out = Path(__file__).resolve().parents[1] / "build"
 out.mkdir(exist_ok=True)
-pixmap(256).save(str(out / "lolitos.ico"), "ICO")
 pixmap(256).save(str(out / "lolitos.png"), "PNG")
+# .ico com todos os tamanhos desenhados de verdade (16 a 256) — o Windows não precisa reduzir/borrar
+SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+try:
+    from PIL import Image
+    tmp = []
+    for s in SIZES:
+        f = out / f"_ico_{s}.png"
+        pixmap(s).save(str(f), "PNG")
+        tmp.append(f)
+    imgs = [Image.open(f).convert("RGBA") for f in tmp]
+    imgs[-1].save(out / "lolitos.ico", format="ICO", sizes=[(s, s) for s in SIZES], append_images=imgs[:-1])
+    for f in tmp:
+        f.unlink()
+except ImportError:   # sem Pillow: ícone de um tamanho só (o Windows reduz)
+    pixmap(256).save(str(out / "lolitos.ico"), "ICO")
 
 
 def banner(w, h, path, scale=1):
@@ -37,7 +51,7 @@ def banner(w, h, path, scale=1):
     p.setFont(f2)
     p.setPen(QColor("#f2f6fc"))
     p.drawText(QRect(0, int(img.height() * 0.58) + 30 * scale, img.width(), 20 * scale), Qt.AlignCenter,
-               "Otimizações")
+               "Control")
     p.setPen(QColor("#8597b0"))
     p.drawText(QRect(0, int(img.height() * 0.88), img.width(), 20 * scale), Qt.AlignCenter, "para jogos")
     p.end()

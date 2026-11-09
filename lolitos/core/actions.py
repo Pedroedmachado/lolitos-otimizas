@@ -349,7 +349,7 @@ def ensure_power_plan(name: str) -> str:
     if not m:
         raise ActionError("não foi possível criar o plano de energia")
     guid = m.group(1).lower()
-    run(["powercfg", "-changename", guid, name, "Criado pelo Lolitos Otimizações"])
+    run(["powercfg", "-changename", guid, name, "Criado pelo Lolitos Control"])
     return guid
 
 

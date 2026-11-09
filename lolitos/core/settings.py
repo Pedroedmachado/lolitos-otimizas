@@ -1,4 +1,4 @@
-"""Preferências do app (JSON em %LOCALAPPDATA%\\LolitosOtimizacoes)."""
+"""Preferências do app (JSON em %LOCALAPPDATA%\\LolitosControl)."""
 from __future__ import annotations
 
 import json

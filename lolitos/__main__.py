@@ -6,7 +6,9 @@ import sys
 
 
 def main() -> int:
-    from lolitos.core.system import IS_WIN, data_dir, is_admin, relaunch_as_admin
+    from lolitos.core.system import IS_WIN, data_dir, is_admin, migrate_old_data, relaunch_as_admin
+
+    migrate_old_data()
 
     sys.setswitchinterval(0.001)   # a thread da interface recupera o GIL mais rápido
     logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
@@ -24,7 +26,7 @@ def main() -> int:
 
     if IS_WIN:
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Lolitos.Otimizacoes")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Lolitos.Control")
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
@@ -36,6 +38,9 @@ def main() -> int:
     from lolitos.ui import theme
     from lolitos.ui.main_window import MainWindow
 
+    if IS_WIN and is_admin():
+        from lolitos.modules.startup import migrate_old_autostart
+        migrate_old_autostart()
     theme.use(settings.get("theme"))
     app.setStyleSheet(theme.qss())
     w = MainWindow()

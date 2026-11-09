@@ -89,6 +89,15 @@ def self_autostart(enable: bool) -> None:
         run(["schtasks", "/Delete", "/F", "/TN", APP_ID])
 
 
+def migrate_old_autostart() -> None:
+    """Tarefa de inicialização da 1.3.x (nome antigo) → recria com o nome e o executável novos."""
+    from lolitos import OLD_APP_ID
+    from lolitos.core.system import run
+    if run(["schtasks", "/Query", "/TN", OLD_APP_ID]).ok:
+        run(["schtasks", "/Delete", "/F", "/TN", OLD_APP_ID])
+        self_autostart(True)
+
+
 def self_autostart_enabled() -> bool:
     from lolitos import APP_ID
     from lolitos.core.system import run

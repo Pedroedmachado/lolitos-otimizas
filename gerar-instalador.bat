@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
-title Lolitos Otimizações - gerando o instalador
+title Lolitos Control - gerando o instalador
 rem =====================================================================
-rem  Gera dist\LolitosOtimizacoes-1.3.2-Setup.exe com dois cliques.
+rem  Gera dist\LolitosControl-1.4.0-Setup.exe com dois cliques.
 rem  Instala sozinho (pelo winget) o que faltar: Python 3.12 e Inno Setup 6.
 rem =====================================================================
 setlocal EnableDelayedExpansion
@@ -53,13 +53,13 @@ if not exist .venv\Scripts\python.exe (
   "!PY!" -m venv .venv || goto :erro
 )
 .venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-.venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller --quiet || goto :erro
+.venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller pillow --quiet || goto :erro
 
 echo.
 echo  [4/5] Gerando o programa (.exe)...
 .venv\Scripts\python.exe tools\make_icon.py || goto :erro
 .venv\Scripts\pyinstaller.exe --noconfirm --clean --windowed --uac-admin ^
-  --name LolitosOtimizacoes ^
+  --name LolitosControl ^
   --icon build\lolitos.ico ^
   --add-data "lolitos\data;lolitos\data" ^
   --distpath dist --workpath build\pyi ^
@@ -71,9 +71,9 @@ echo  [5/5] Montando o instalador...
 
 echo.
 echo  =====================================================================
-echo   PRONTO:  dist\LolitosOtimizacoes-1.3.2-Setup.exe
+echo   PRONTO:  dist\LolitosControl-1.4.0-Setup.exe
 echo  =====================================================================
-explorer /select,"%~dp0dist\LolitosOtimizacoes-1.3.2-Setup.exe"
+explorer /select,"%~dp0dist\LolitosControl-1.4.0-Setup.exe"
 pause
 exit /b 0
 
