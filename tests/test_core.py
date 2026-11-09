@@ -140,6 +140,18 @@ def test_pc_profile_rules():
     assert isinstance(pc.advice(), list)
 
 
+def test_updater_rules():
+    from lolitos.modules import updater as u
+    assert u.parse_version("v1.10.0") > u.parse_version("1.9.9")
+    assert u.parse_version("1.5") == (1, 5, 0)
+    assert u.ASSET_RE.match("LolitosControl-1.5.0-Setup.exe")
+    assert not u.ASSET_RE.match("LolitosControl-1.5.0-Setup.exe.zip")
+    assert u._host_ok("https://github.com/x/y/releases/download/v1/a.exe")
+    assert u._host_ok("https://objects.githubusercontent.com/abc")
+    assert not u._host_ok("http://github.com/a")
+    assert not u._host_ok("https://github.com.evil.example/a")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

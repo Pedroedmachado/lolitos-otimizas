@@ -1,7 +1,7 @@
 ﻿; Instalador do Lolitos Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Lolitos Control"
-#define AppVersion "1.4.0"
+#define AppVersion "1.5.0"
 #define AppExe "LolitosControl.exe"
 #define OldExe "LolitosOtimizacoes.exe"
 #define OldName "Lolitos Otimizações"
@@ -67,6 +67,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 ; tarefa agendada: abre já como administrador no logon, sem pedir o UAC toda vez
 Filename: "schtasks.exe"; Parameters: "/Create /F /RL HIGHEST /SC ONLOGON /DELAY 0000:15 /TN {#AppId} /TR ""\""{app}\{#AppExe}\"" --tray"""; Flags: runhidden; Tasks: autostart
 Filename: "{app}\{#AppExe}"; Description: "Abrir o {#AppName} agora"; Flags: nowait postinstall skipifsilent shellexec
+; atualização automática (instalador rodado pelo próprio app com /VERYSILENT /relaunch=1): reabre o app
+Filename: "{app}\{#AppExe}"; Flags: nowait shellexec; Check: ShouldRelaunch
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM {#AppExe}"; Flags: runhidden; RunOnceId: "KillApp"
@@ -74,6 +76,11 @@ Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#OldAppId}"; Flags: runhi
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#AppId}"; Flags: runhidden; RunOnceId: "DelTask"
 
 [Code]
+function ShouldRelaunch: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;

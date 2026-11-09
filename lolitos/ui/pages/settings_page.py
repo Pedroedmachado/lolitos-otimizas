@@ -35,7 +35,10 @@ class SettingsPage(Page):
         plan = QCheckBox("'Preparar e jogar': trocar o plano de energia só durante a partida")
         plan.setChecked(settings.get("play_power_plan"))
         plan.toggled.connect(lambda v: settings.set("play_power_plan", v))
-        for w in (dark, tray, rp, auto, free, plan):
+        upd = QCheckBox("Procurar atualização no GitHub ao abrir o app")
+        upd.setChecked(settings.get("check_updates", True))
+        upd.toggled.connect(lambda v: settings.set("check_updates", v))
+        for w in (dark, tray, rp, auto, free, plan, upd):
             c.lay.addWidget(w)
         c.lay.addLayout(hrow(button("Abrir pasta de dados", on_click=lambda: os.startfile(str(data_dir()))), None))
         self.body.addWidget(c)

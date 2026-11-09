@@ -22,6 +22,7 @@ DEFAULTS = {
     "ping_target": "1.1.1.1",
     "bdo_dir": "",
     "seen_tour": False,
+    "check_updates": True,
 }
 
 

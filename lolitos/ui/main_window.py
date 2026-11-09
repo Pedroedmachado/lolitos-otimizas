@@ -1,6 +1,8 @@
 """Janela principal: barra lateral, páginas, bandeja e tecla global do overlay."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMainWindow, QMenu,
                                QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
@@ -79,6 +81,12 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(cls(self))
             self.index[key] = i
         sl.addStretch()
+        self.update_btn = QPushButton("⟳  Procurar atualização")
+        self.update_btn.setObjectName("nav")
+        self.update_btn.setCursor(Qt.PointingHandCursor)
+        self.update_btn.setToolTip("Confere no GitHub se há versão nova do Lolitos Control")
+        self.update_btn.clicked.connect(lambda: self.check_update(manual=True))
+        sl.addWidget(self.update_btn)
         sl.addWidget(label(f"v{VERSION}", "brandsub"))
         lay.addWidget(side)
         lay.addWidget(self.stack, 1)
@@ -89,6 +97,10 @@ class MainWindow(QMainWindow):
         self.go("painel")
         self.register_hotkey()
         self.prebuild_pages()
+        self._update_info = None
+        if settings.get("check_updates", True):
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(5000, lambda: self.check_update(manual=False))
         if not settings.get("seen_analysis"):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(900, self.first_run)
@@ -131,6 +143,80 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         theme.use(settings.get("theme"))
         QApplication.instance().setStyleSheet(theme.qss())
+
+    # ---------------------------------------------------------------- atualização
+    def check_update(self, manual: bool = True):
+        from lolitos.modules import updater
+        from lolitos.ui.widgets import info, run_async
+
+        def found(inf):
+            self._update_info = inf
+            if not inf:
+                self.update_btn.setText("⟳  Procurar atualização")
+                if manual:
+                    info(self, "Atualização", f"Você já está na versão mais recente ({VERSION}).")
+                return
+            self.update_btn.setText(f"⬆  Atualizar para {inf['version']}")
+            self.update_btn.setStyleSheet(f"color:{theme.C['accent2']}; font-weight:700;")
+            if manual:
+                self.do_update(inf)
+            elif self.tray.isVisible():
+                self.tray.showMessage(APP_NAME, f"Versão {inf['version']} disponível. Clique em 'Atualizar' na "
+                                                "barra lateral.")
+
+        def failed(err):
+            self.update_btn.setText("⟳  Procurar atualização")
+            if manual:
+                info(self, "Atualização", f"Não foi possível consultar o GitHub agora.\n\n{err}")
+
+        if manual and self._update_info:
+            self.do_update(self._update_info)
+            return
+        if manual:
+            self.update_btn.setText("⟳  Procurando…")
+        run_async(updater.check, on_done=found, on_error=failed)
+
+    def do_update(self, inf: dict):
+        import webbrowser
+        from lolitos.modules import updater
+        from lolitos.ui.widgets import TaskDialog, confirm, info
+        notes = inf["notes"][:1200].replace("\n", "<br>") if inf["notes"] else ""
+        if not updater.can_self_update():
+            if confirm(self, "Atualização", f"Versão <b>{inf['version']}</b> disponível.<br><br>Esta cópia roda "
+                       "direto do código, então a atualização automática não se aplica. Abrir a página de "
+                       "download?", yes="Abrir página"):
+                webbrowser.open(inf["page"])
+            return
+        if not confirm(self, "Atualizar o Lolitos Control",
+                       f"<p>Versão <b>{inf['version']}</b> disponível (você tem a {VERSION}).</p>"
+                       + (f"<p>{notes}</p>" if notes else "")
+                       + "<p>O instalador é baixado do GitHub, conferido e executado sem janelas. O app fecha e "
+                         "abre de novo sozinho em alguns segundos. Histórico, perfis e configurações são mantidos.</p>",
+                       yes="Atualizar agora", no="Depois"):
+            return
+
+        def work(progress=None):
+            last = [-1]
+
+            def pct(p):
+                if p // 10 != last[0]:
+                    last[0] = p // 10
+                    progress(f"Baixando… {p}%")
+            progress(f"Baixando {inf['name']} do GitHub…")
+            path = updater.download(inf, pct)
+            progress("Download conferido (tamanho" + (" e SHA-256" if inf["sha256"] else "") + ").")
+            return str(path)
+
+        def done(path):
+            if not path:
+                return
+            updater.install_and_restart(Path(path))
+            self.quit()
+
+        dlg = TaskDialog(self, "Atualizando o Lolitos Control", work, on_done=done)
+        dlg.exec()
+        if dlg.result_value is None:
+            info(self, "Atualização", "A atualização não foi concluída. Tente de novo mais tarde.")
 
     def first_run(self):
         """Na primeira abertura: mostra a análise do PC e oferece o recomendado para ELE."""
