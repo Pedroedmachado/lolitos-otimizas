@@ -196,8 +196,8 @@ def _cover_pool():
 class Poster(QWidget):
     """Capa do jogo: arte vertical com cantos arredondados, nome embaixo e botão de jogar ao passar o mouse."""
 
-    def __init__(self, page, g):
-        super().__init__()
+    def __init__(self, page, g, parent=None):
+        super().__init__(parent)   # com pai: nunca vira janela solta
         self.page, self.g = page, g
         self.pix: QPixmap | None = None
         self.hover = False
@@ -424,7 +424,7 @@ class GamesPage(Page):
         gs = sorted(gs, key=lambda g: (not (g.store == "bdo" or g.name.lower().startswith("black desert")),
                                        g.name.lower()))
         for g in gs:
-            self.tiles.append(Poster(self, g))
+            self.tiles.append(Poster(self, g, self.grid_w))
         self._filter(self.q.text())
         missing = [t for t in self.tiles if t.pix is None]
         for t in missing:

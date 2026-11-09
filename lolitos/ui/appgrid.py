@@ -90,8 +90,8 @@ class FlowLayout(QLayout):
 class AppTile(QWidget):
     toggled = Signal()
 
-    def __init__(self, app):
-        super().__init__()
+    def __init__(self, app, parent=None):
+        super().__init__(parent)   # com pai: nunca vira janela solta
         self.app = app
         self.selected = False
         self.installed = False
@@ -206,7 +206,8 @@ class AppGrid(QWidget):
             bl.addWidget(gw)
             tl = []
             for a in sorted(groups[cat], key=lambda x: x.name.lower()):
-                t = AppTile(a)
+                t = AppTile(a, gw)
+                t.hide()
                 t.selected = a.winget in defaults
                 t.toggled.connect(self.changed.emit)
                 tl.append(t)

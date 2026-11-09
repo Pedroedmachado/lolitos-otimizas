@@ -413,9 +413,9 @@ class TweakRow(QFrame):
         self.setObjectName("card")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(14, 10, 14, 10)
-        self.chk = QCheckBox()
-        self.chk.setVisible(selectable)
+        self.chk = QCheckBox(self)
         lay.addWidget(self.chk, 0, Qt.AlignTop)
+        self.chk.setVisible(selectable)      # só depois de ter pai: antes disso viraria uma janela solta
         col = QVBoxLayout()
         col.setSpacing(3)
         tags = []
