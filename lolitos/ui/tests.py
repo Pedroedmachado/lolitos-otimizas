@@ -6,7 +6,7 @@ import time
 
 from PySide6.QtCore import QElapsedTimer, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QWidget
 
 from lolitos.i18n import tr
 
@@ -18,42 +18,67 @@ class MousePad(QFrame):
     def __init__(self, on_update=None):
         super().__init__()
         self.setMouseTracking(True)
-        self.setMinimumSize(520, 360)
-        self.setObjectName("card")
+        self.setMinimumSize(520, 420)
         self.ts: list[float] = []
         self.best = 0.0
-        self.samples: list[float] = []
+        self.events = 0
         self.on_update = on_update
-        self.hint = QLabel("Faça círculos rápidos e contínuos aqui dentro", self)
-        self.hint.setAlignment(Qt.AlignCenter)
-        self.hint.setAttribute(Qt.WA_TransparentForMouseEvents)   # o movimento chega na área, não no texto
-        lay = QVBoxLayout(self)
-        lay.addWidget(self.hint)
+        self.title = tr("Faça círculos rápidos e contínuos aqui dentro")
+        self.sub = tr("Uns 5 segundos sem parar. Movimento em linha reta mede o seu braço, não o mouse.")
         t = QTimer(self)
         t.timeout.connect(self._calc)
-        t.start(300)
+        t.start(250)
 
     def mouseMoveEvent(self, e):
         self.ts.append(time.perf_counter())
+        self.events += 1
         if len(self.ts) > 4000:
             self.ts = self.ts[-4000:]
 
     def reset(self):
-        self.ts, self.best, self.samples = [], 0.0, []
+        self.ts, self.best, self.events = [], 0.0, 0
+        if self.on_update:
+            self.on_update(0.0, 0.0, 0)
 
     def _calc(self):
         now = time.perf_counter()
         recent = [t for t in self.ts if now - t < 0.6]
-        if len(recent) < 20:
-            return
-        gaps = [b - a for a, b in zip(recent, recent[1:]) if 0 < b - a < 0.05]
-        if not gaps:
-            return
-        hz = 1 / statistics.median(gaps)
-        self.best = max(self.best, hz)
-        self.samples.append(hz)
+        hz = 0.0
+        if len(recent) >= 20:
+            gaps = [b - a for a, b in zip(recent, recent[1:]) if 0 < b - a < 0.05]
+            if gaps:
+                hz = 1 / statistics.median(gaps)
+                self.best = max(self.best, hz)
         if self.on_update:
-            self.on_update(hz, self.best)
+            self.on_update(hz, self.best, self.events)
+
+    def paintEvent(self, _):
+        from lolitos.ui.theme import C
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setBrush(QColor(C["panel"]))
+        pen = p.pen()
+        pen.setColor(QColor(C["border2"]))
+        pen.setStyle(Qt.DashLine)
+        pen.setWidthF(1.2)
+        p.setPen(pen)
+        p.drawRoundedRect(r, 14, 14)
+        cx, cy = r.center().x(), r.center().y() - 30
+        pen.setColor(QColor(C["accent"]))
+        pen.setWidthF(2)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        p.drawEllipse(QPointF(cx, cy), 46, 46)
+        p.setPen(QColor(C["accent2"]))
+        p.setFont(QFont("Segoe UI", 18))
+        p.drawText(QRectF(cx + 20, cy + 18, 30, 30), Qt.AlignCenter, "🖱")
+        p.setPen(QColor(C["text"]))
+        p.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        p.drawText(QRectF(r.left(), cy + 60, r.width(), 26), Qt.AlignCenter, self.title)
+        p.setPen(QColor(C["muted"]))
+        p.setFont(QFont("Segoe UI", 9))
+        p.drawText(QRectF(r.left(), cy + 88, r.width(), 22), Qt.AlignCenter, self.sub)
 
 
 def mouse_verdict(best: float) -> tuple[str, str]:
@@ -83,18 +108,20 @@ class MonitorTest(QWidget):
     """mode: 'motion' (movimento/ghosting com faixas de 1, 1/2 e 1/4 dos quadros), 'colors' (cores sólidas,
     degradê e degraus de preto) ou 'oled' (preto total + retenção)."""
 
-    def __init__(self, mode="motion"):
+    def __init__(self, mode="motion", speed=960, obj=0, bg=0, col=0, count=1, bands=True, text=""):
         super().__init__()
         self.setWindowTitle(tr("Lolitos Control — Teste de monitor"))
         self.mode = mode
         self.i = 0
         self.x = 0.0
-        self.speed = 960.0
+        self.speed = float(speed)
         self.paused = False
-        self.obj = 0
-        self.bg = 0
-        self.col = 0
-        self.count = 1
+        self.obj = obj
+        self.bg = bg
+        self.col = col
+        self.count = count
+        self.bands = bands
+        self.text_color = text
         self.show_help = True
         self.timer = QElapsedTimer()
         self.timer.start()
@@ -149,6 +176,10 @@ class MonitorTest(QWidget):
 
     # ---------------------------------------------------------------- desenho
     def _screens(self):
+        if self.mode == "bleed":
+            return [("Preto total: procure clarões nos cantos (backlight bleed), IPS glow e manchas (clouding).",
+                     "#000000"),
+                    ("Cinza muito escuro (5%): manchas e faixas ficam mais visíveis.", "#0d0d0d")]
         if self.mode == "oled":
             return [("Preto total: num OLED a tela inteira deve sumir. Pontos acesos = pixels travados.", "#000000"),
                     ("Cinza 18%: procure contornos da barra de tarefas e HUDs (retenção/burn-in).", "#2e2e2e"),
@@ -221,24 +252,27 @@ class MonitorTest(QWidget):
         name, bgc, bars = BACKGROUNDS[self.bg]
         p.fillRect(self.rect(), QColor(bgc))
         h = self.height()
-        band = h / 3
+        fracs = (1, 2, 4) if self.bands else (1,)
+        band = h / len(fracs)
         fps = 1 / statistics.mean(self.frames) if self.frames else 0
-        for row, frac in enumerate((1, 2, 4)):
+        for row, frac in enumerate(fracs):
             y0 = row * band
             if bars:
                 p.fillRect(QRectF(0, y0 + band - 6, self.width(), 6), QColor("#000000"))
             # 1/2 e 1/4: o objeto só anda a cada 2 ou 4 quadros (simula FPS menor)
             step = self.speed / max(fps, 1) * frac
             x = (self.x // step) * step if frac > 1 and step else self.x
-            size = band * 0.45
+            size = min(band * 0.45, h * 0.2)
             for k in range(self.count):
                 self._paint_object(p, x - k * (size * 2.2), y0 + band * 0.22, size)
-            p.setPen(QColor("#ffffff") if bgc in ("#000000", "#3c3c3c") else QColor("#101010"))
+            p.setPen(QColor(self.text_color) if self.text_color else
+                     QColor("#ffffff") if bgc in ("#000000", "#3c3c3c") else QColor("#101010"))
             p.setFont(QFont("Segoe UI", 10, QFont.Bold))
             p.drawText(12, int(y0 + 20), tr(["Quadros cheios", "Metade dos quadros (1/2)",
                                              "Um quarto dos quadros (1/4)"][row]))
         if self.show_help:
-            p.setPen(QColor("#ffffff") if bgc in ("#000000", "#3c3c3c") else QColor("#101010"))
+            p.setPen(QColor(self.text_color) if self.text_color else
+                     QColor("#ffffff") if bgc in ("#000000", "#3c3c3c") else QColor("#101010"))
             p.setFont(QFont("Segoe UI", 10))
             if now - self._help_t > 0.25:     # traduz 4x por segundo, não a cada quadro
                 self._help_t = now

@@ -19,6 +19,7 @@ class App:
     category: str
     winget: str
     link: str
+    foss: bool = False
 
 
 def catalog() -> list[App]:
@@ -33,7 +34,7 @@ def catalog() -> list[App]:
         if not wid or wid.lower() == "na":
             continue
         out.append(App(key, a.get("content", key), a.get("description", ""), a.get("category", "Outros"),
-                       wid.split(";")[0], a.get("link", "")))
+                       wid.split(";")[0], a.get("link", ""), bool(a.get("foss"))))
     return sorted(out, key=lambda a: (a.category, a.name.lower()))
 
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 import inspect
 import traceback
 
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal, Slot
-from PySide6.QtWidgets import (QCheckBox, QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit,
+from PySide6.QtCore import QObject, QRectF, QRunnable, Qt, QThreadPool, Signal, Slot
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (QAbstractButton, QCheckBox, QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
 from lolitos.i18n import tr, translate_tree
@@ -35,10 +36,18 @@ class _Job(QRunnable):
                     kw["progress"] = self.sig.progress.emit
             except (TypeError, ValueError):
                 pass
-            self.sig.done.emit(self.fn(*self.args, **kw))
+            result = self.fn(*self.args, **kw)
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
-            self.sig.error.emit(f"{type(e).__name__}: {e}")
+            try:
+                self.sig.error.emit(f"{type(e).__name__}: {e}")
+            except RuntimeError:      # janela já fechada
+                pass
+            return
+        try:
+            self.sig.done.emit(result)
+        except RuntimeError:          # o app fechou enquanto a tarefa rodava
+            pass
 
 
 _JOBS: set = set()
@@ -208,10 +217,103 @@ class Badge(QLabel):
                            f"font-size:8.5pt; font-weight:700;")
 
 
+class IconTile(QFrame):
+    """Quadrado arredondado com um ícone de linha (cabeçalho das telas e dos cartões)."""
+
+    def __init__(self, name: str, size: int = 50, pt: float = 17, color: str = ""):
+        super().__init__()
+        from lolitos.ui import glyphs
+        self.setObjectName("icontile")
+        self.setFixedSize(size, size)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(glyphs.glyph(name, pt, color or C["accent2"]))
+
+
+class Toggle(QAbstractButton):
+    """Chave liga/desliga (no lugar de caixa de marcar onde é uma configuração)."""
+
+    def __init__(self, checked: bool = False, on_toggle=None):
+        super().__init__()
+        self.setCheckable(True)
+        self.setChecked(checked)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedSize(44, 24)
+        if on_toggle:
+            self.toggled.connect(on_toggle)
+
+    def paintEvent(self, _):
+        from PySide6.QtGui import QPainter
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        on = self.isChecked()
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(C["accent"] if on else C["border2"]))
+        if not self.isEnabled():
+            p.setOpacity(0.45)
+        p.drawRoundedRect(QRectF(0, 0, 44, 24), 12, 12)
+        p.setBrush(QColor("#ffffff"))
+        p.drawEllipse(QRectF(23 if on else 3, 3, 18, 18))
+
+
+class StatTile(QFrame):
+    """Bloco de número: rótulo pequeno em cima, valor grande, unidade embaixo."""
+
+    def __init__(self, caption: str, value: str = "—", unit: str = "", icon: str = "", align=Qt.AlignCenter):
+        super().__init__()
+        self.setObjectName("card")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(18, 14, 18, 14)
+        lay.setSpacing(2)
+        top = QHBoxLayout()
+        top.setSpacing(6)
+        if icon:
+            from lolitos.ui import glyphs
+            top.addWidget(glyphs.glyph(icon, 10, C["accent2"]))
+        cap = label(caption.upper(), "statcap", wrap=False)
+        top.addWidget(cap)
+        if align == Qt.AlignCenter:
+            top.insertStretch(0)
+        top.addStretch()
+        lay.addLayout(top)
+        self.value = label(value, "statval", wrap=False)
+        self.value.setAlignment(align)
+        lay.addWidget(self.value)
+        self.unit = label(unit, "statunit", wrap=False)
+        self.unit.setAlignment(align)
+        lay.addWidget(self.unit)
+
+    def set(self, value: str, unit: str | None = None):
+        self.value.setText(value)
+        if unit is not None:
+            self.unit.setText(unit)
+
+
+def card_header(icon: str, title: str, right: QWidget | None = None) -> QHBoxLayout:
+    """Linha de título de cartão: ícone + título em negrito + algo à direita (selo, contador, chave)."""
+    from lolitos.ui import glyphs
+    row = QHBoxLayout()
+    row.setSpacing(10)
+    row.addWidget(glyphs.glyph(icon, 13, C["accent2"]))
+    row.addWidget(label(f"<b>{tr(title)}</b>", "h3", rich=True, wrap=False))
+    row.addStretch()
+    if right is not None:
+        row.addWidget(right)
+    return row
+
+
+def pill(text: str, color: str = "") -> QLabel:
+    lb = label(text, "pill", wrap=False)
+    if color:
+        lb.setStyleSheet(f"color:{color}; border-color:{color};")
+    return lb
+
+
 class Page(QWidget):
-    """Página com título, subtítulo e área rolável."""
+    """Página com cabeçalho (ícone, título, subtítulo, ações à direita) e área rolável."""
     title = ""
     subtitle = ""
+    icon = ""
 
     def __init__(self, main=None):
         super().__init__()
@@ -229,9 +331,22 @@ class Page(QWidget):
         self.body = QVBoxLayout(inner)
         self.body.setContentsMargins(28, 22, 28, 28)
         self.body.setSpacing(14)
+        self.actions = QHBoxLayout()
+        self.actions.setSpacing(8)
         if self.title:
-            self.body.addWidget(label(self.title, "h1"))
-        if self.subtitle:
+            head = QHBoxLayout()
+            head.setSpacing(16)
+            if self.icon:
+                head.addWidget(IconTile(self.icon), 0, Qt.AlignTop)
+            col = QVBoxLayout()
+            col.setSpacing(2)
+            col.addWidget(label(self.title, "h1"))
+            if self.subtitle:
+                col.addWidget(label(self.subtitle, "muted"))
+            head.addLayout(col, 1)
+            head.addLayout(self.actions)
+            self.body.addLayout(head)
+        elif self.subtitle:
             self.body.addWidget(label(self.subtitle, "muted"))
         self._built = False
 

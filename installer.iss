@@ -1,7 +1,7 @@
 ﻿; Instalador do Lolitos Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Lolitos Control"
-#define AppVersion "1.6.2"
+#define AppVersion "1.7.0"
 #define AppExe "LolitosControl.exe"
 #define OldExe "LolitosOtimizacoes.exe"
 #define OldName "Lolitos Otimizações"

@@ -5,14 +5,14 @@ DARK = {
     "text": "#f2f6fc", "muted": "#8597b0", "accent": "#1e9bff", "accent2": "#5cc8ff", "deep": "#0a6cff",
     "on_accent": "#ffffff", "gold": "#f5b82e",
     "ok": "#4ade80", "warn": "#f5b82e", "bad": "#ff4d5e", "info": "#22c3ff",
-    "hero1": "#0c2a55", "hero2": "#0a1526", "hero_border": "#1d3d6b",
+    "hero1": "#0c2a55", "hero2": "#0a1526", "hero_border": "#1d3d6b", "deepbg": "#0c2a55",
 }
 LIGHT = {
     "bg": "#edf3fb", "panel": "#ffffff", "panel2": "#e6eef9", "border": "#c9d7ea", "border2": "#9fb6d6",
     "text": "#0b1220", "muted": "#52637a", "accent": "#0a6cff", "accent2": "#075bee", "deep": "#0a4fd0",
     "on_accent": "#ffffff", "gold": "#c98a00",
     "ok": "#059669", "warn": "#b7791f", "bad": "#e11d48", "info": "#0891b2",
-    "hero1": "#d6e6ff", "hero2": "#ffffff", "hero_border": "#9fb6d6",
+    "hero1": "#d6e6ff", "hero2": "#ffffff", "hero_border": "#9fb6d6", "deepbg": "#d6e6ff",
 }
 C = dict(DARK)
 
@@ -50,14 +50,47 @@ QLabel#navsec {{ color: {c['muted']}; font-size: 7.5pt; font-weight: 800; letter
 QWidget#navlist, QScrollArea#navscroll, QScrollArea#navscroll > QWidget#qt_scrollarea_viewport {{
     background: {c['panel']}; }}
 QFrame#sidebar {{ background: {c['panel']}; border-right: 1px solid {c['border']}; }}
-QPushButton#nav {{ text-align: left; padding: 7px 14px; border: none; border-radius: 8px; background: transparent;
+QPushButton#nav {{ text-align: left; padding: 7px 14px; border: none; border-radius: 10px; background: transparent;
                   color: {c['muted']}; font-size: 10pt; }}
 QPushButton#nav:hover {{ background: {c['panel2']}; color: {c['text']}; }}
-QPushButton#nav:checked {{ background: {c['panel2']}; color: {c['accent2']}; font-weight: 600;
+QPushButton#nav:checked {{ background: {c['deepbg']}; border: 1px solid {c['accent']};
                           border-left: 3px solid {c['accent']}; }}
+QPushButton#navgold {{ border: 1px solid {c['gold']}; border-radius: 4px; background: transparent; }}
+QPushButton#navgold:hover, QPushButton#navgold:checked {{ background: rgba(245,184,46,0.10); }}
+QPushButton#update {{ text-align: left; padding: 8px 12px; border: 1px solid {c['border']}; border-radius: 10px;
+    background: {c['panel']}; color: {c['muted']}; }}
+QPushButton#update:hover {{ color: {c['text']}; border-color: {c['border2']}; }}
+QLabel#brand1 {{ font-size: 15pt; font-weight: 900; color: {c['text']}; letter-spacing: 1px; }}
+QLabel#brand2 {{ font-size: 7.5pt; font-weight: 800; color: {c['accent']}; }}
+QLabel#verpill {{ color: {c['accent2']}; background: {c['panel2']}; border: 1px solid {c['border2']};
+    border-radius: 9px; padding: 1px 8px; font-size: 8pt; font-weight: 700; }}
 QLabel#brand {{ font-size: 15pt; font-weight: 800; color: {c['accent2']}; }}
 QLabel#brandsub {{ color: {c['muted']}; font-size: 8.5pt; }}
-QLabel#h1 {{ font-size: 18pt; font-weight: 800; }}
+QLabel#h1 {{ font-size: 20pt; font-weight: 800; }}
+QLabel#h3 {{ font-size: 11pt; }}
+QLabel#hello {{ font-size: 30pt; font-weight: 900; }}
+QLabel#pendtitle {{ color: {c['accent2']}; font-size: 12pt; font-weight: 800; }}
+QLabel#cardcap {{ font-size: 8.5pt; font-weight: 800; letter-spacing: 0.5px; }}
+QLabel#miniv {{ font-size: 21pt; font-weight: 800; }}
+QLabel#scorebig {{ font-size: 34pt; font-weight: 900; }}
+QLabel#newtag {{ color: {c['accent2']}; font-size: 8pt; font-weight: 800; }}
+QPushButton#outline {{ background: transparent; border: 1px solid {c['accent']}; border-radius: 8px; font-weight: 700;
+    padding: 8px; }}
+QPushButton#outline:hover {{ background: {c['deepbg']}; }}
+QPushButton#chip {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 4px; padding: 6px 12px;
+    font-weight: 700; color: {c['text']}; }}
+QPushButton#chip:hover {{ border-color: {c['border2']}; }}
+QPushButton#chip:checked {{ background: {c['deepbg']}; border-color: {c['accent']}; }}
+QPushButton#seg {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 0; padding: 6px 16px;
+    color: {c['muted']}; font-weight: 700; }}
+QPushButton#seg:checked {{ background: {c['deepbg']}; color: {c['text']}; border-color: {c['accent']}; }}
+QFrame#icontile {{ background: {c['panel2']}; border: 1px solid {c['border2']}; border-radius: 12px; }}
+QLabel#statcap {{ color: {c['muted']}; font-size: 8pt; letter-spacing: 0.5px; }}
+QLabel#statval {{ font-size: 20pt; font-weight: 800; }}
+QLabel#statunit {{ color: {c['muted']}; font-size: 8pt; }}
+QLabel#pill {{ color: {c['accent2']}; border: 1px solid {c['border2']}; border-radius: 6px; padding: 2px 8px;
+    font-size: 8.5pt; font-weight: 700; background: {c['panel']}; }}
+QLabel#bigtitle {{ color: {c['accent']}; font-size: 22pt; font-weight: 900; letter-spacing: 0.5px; }}
 QLabel#h2 {{ font-size: 12.5pt; font-weight: 700; }}
 QLabel#muted {{ color: {c['muted']}; }}
 QLabel#big {{ font-size: 34pt; font-weight: 800; color: {c['accent2']}; }}
@@ -95,7 +128,10 @@ QProgressBar::chunk {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 {
 QTableWidget, QTreeWidget, QListWidget {{ background: {c['panel']}; border: 1px solid {c['border']};
     border-radius: 8px; gridline-color: {c['border']}; alternate-background-color: {c['panel2']}; }}
 QListWidget::item:selected {{ background: {c['panel2']}; color: {c['text']}; }}
-QHeaderView::section {{ background: {c['panel2']}; border: none; padding: 6px; color: {c['muted']}; }}
+QHeaderView::section {{ background: {c['panel2']}; border: none; padding: 7px; color: {c['text']}; font-weight: 700; }}
+QTreeWidget::item {{ padding: 3px 0; }}
+QTreeWidget::item:hover {{ background: {c['panel2']}; }}
+QTreeWidget::item:selected {{ background: {c['deepbg']}; color: {c['text']}; }}
 QSlider::groove:horizontal {{ height: 6px; background: {c['panel2']}; border-radius: 3px; }}
 QSlider::sub-page:horizontal {{ background: {c['accent']}; border-radius: 3px; }}
 QSlider::handle:horizontal {{ width: 16px; margin: -6px 0; border-radius: 8px; background: {c['accent2']}; }}

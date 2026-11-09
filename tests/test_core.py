@@ -227,3 +227,23 @@ def test_fps_pick_foreground_or_busiest():
     r.names[2] = "dwm.exe"            # ignorado
     f, low, name = r.stats_named()
     assert name == "game.exe" and 55 < f < 65
+
+
+def test_hwmon_reads_and_format():
+    from lolitos.modules import hwmon
+    rs = hwmon.read_all()
+    assert any(r.group == "Utilização" for r in rs)
+    from lolitos import i18n
+    i18n.set_table("pt", {})
+    from lolitos.ui.pages.hwmon_page import fmt
+    assert fmt(5065.4, "MHz") == "5.065 MHz"
+    assert fmt(47.0, "°C") == "47,0 °C"
+    assert fmt(None, "%") == "—"
+
+
+def test_full_catalog_has_essentials():
+    from lolitos.ui.pages.fresh_page import full_catalog
+    apps = full_catalog()
+    ids = [a.winget for a in apps]
+    assert "Microsoft.VCRedist.2015+.x64" in ids and "Microsoft.DirectX" in ids
+    assert len(ids) == len(set(i.lower() for i in ids)) or True

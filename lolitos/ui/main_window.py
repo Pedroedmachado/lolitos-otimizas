@@ -27,8 +27,9 @@ def _pages():
     from lolitos.ui.pages.games_page import GamesPage
     from lolitos.ui.pages.hardware_page import MyPcPage, PerformancePage
     from lolitos.ui.pages.maintenance_page import MaintenancePage
-    from lolitos.ui.pages.opt_pages import (DefenderAiPage, FreshPage, GpuComparePage, GpuPage, KeyboardPage,
-                                            MousePage, WindowsPage)
+    from lolitos.ui.pages.fresh_page import FreshPage
+    from lolitos.ui.pages.opt_pages import (DefenderAiPage, GpuComparePage, GpuPage, KeyboardPage, MousePage,
+                                            WindowsPage)
     from lolitos.ui.pages.overlay_page import OverlayPage
     from lolitos.ui.pages.profiles_page import ProfilesPage
     from lolitos.ui.pages.restore_page import RestorePage
@@ -36,26 +37,30 @@ def _pages():
     from lolitos.ui.pages.startup_page import StartupPage
     from lolitos.ui.pages.tools_pages import (CheckupPage, MonitorTestPage, MouseTestPage, PacketLossPage,
                                               SpeedTestPage)
+    from lolitos.ui.pages.full_opt_page import FullOptPage
+    from lolitos.ui.pages.hwmon_page import HwMonitorPage
     return [
         ("PRINCIPAL", [
-            ("painel", "⌂  Painel", Dashboard), ("manutencao", "🧰  Manutenção", MaintenancePage),
-            ("desempenho", "📈  Desempenho", PerformancePage), ("meupc", "🖥  Meu PC", MyPcPage),
-            ("bdo", "⚔  Black Desert", BdoPage)]),
+            ("painel", "home", "Painel", Dashboard), ("manutencao", "repair", "Manutenção", MaintenancePage),
+            ("desempenho", "speed", "Desempenho", PerformancePage), ("meupc", "pc", "Meu PC", MyPcPage),
+            ("hwmon", "sensor", "Hardware Monitor", HwMonitorPage), ("bdo", "bdo", "Black Desert", BdoPage),
+            ("completa", "bolt", "Otimização Completa", FullOptPage)]),
         ("OTIMIZAR", [
-            ("formatacao", "💿  Formatação", FreshPage), ("debloat", "✂  Debloat", DebloatPage),
-            ("windows", "⊞  Windows", WindowsPage), ("mouse", "🖱  Mouse", MousePage),
-            ("teclado", "⌨  Teclado", KeyboardPage), ("gpu", "🎨  GPU", GpuPage),
-            ("perfis", "★  Perfis", ProfilesPage), ("jogos", "🎮  Jogos", GamesPage),
-            ("apps", "📦  Instalar apps", AppsPage), ("limpeza", "🧹  Limpeza", CleanupPage),
-            ("inicializacao", "🚀  Inicialização", StartupPage)]),
+            ("formatacao", "fresh", "Formatação", FreshPage), ("debloat", "debloat", "Debloat", DebloatPage),
+            ("windows", "windows", "Windows", WindowsPage), ("mouse", "mouse", "Mouse", MousePage),
+            ("teclado", "keyboard", "Teclado", KeyboardPage), ("gpu", "gpu", "GPU", GpuPage),
+            ("perfis", "profiles", "Perfis", ProfilesPage), ("jogos", "games", "Jogos", GamesPage),
+            ("apps", "apps", "Instalar apps", AppsPage), ("limpeza", "clean", "Limpeza", CleanupPage),
+            ("inicializacao", "power", "Inicialização", StartupPage)]),
         ("FERRAMENTAS", [
-            ("overlay", "◱  Overlay de jogo", OverlayPage), ("teste_mouse", "🎯  Teste do mouse", MouseTestPage),
-            ("teste_monitor", "🖵  Teste de monitor", MonitorTestPage),
-            ("velocidade", "📶  Teste de velocidade", SpeedTestPage), ("perda", "📉  Perda de pacotes", PacketLossPage),
-            ("comparar", "⚖  Comparar placas", GpuComparePage), ("defender", "🛡  Defender e IA", DefenderAiPage),
-            ("checkup", "✔  Check-up", CheckupPage)]),
+            ("overlay", "overlay", "Overlay de jogo", OverlayPage), ("teste_mouse", "mouse", "Teste do mouse", MouseTestPage),
+            ("teste_monitor", "monitor", "Teste de monitor", MonitorTestPage),
+            ("velocidade", "download", "Teste de velocidade", SpeedTestPage),
+            ("perda", "network", "Perda de pacotes", PacketLossPage),
+            ("comparar", "compare", "Comparar placas", GpuComparePage), ("defender", "shield", "Defender e IA", DefenderAiPage),
+            ("checkup", "heart", "Check-up", CheckupPage)]),
         ("SISTEMA", [
-            ("restauracao", "↺  Restauração", RestorePage), ("config", "☰  Configurações", SettingsPage)]),
+            ("restauracao", "history", "Restauração", RestorePage), ("config", "settings", "Configurações", SettingsPage)]),
     ]
 
 
@@ -79,18 +84,37 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
+        from lolitos.i18n import current
+        from lolitos.ui.nav import Brand, Flag, NavButton
         side = QFrame()
         side.setObjectName("sidebar")
-        side.setFixedWidth(220)
+        side.setFixedWidth(256)
+        self.side = side
         sl = QVBoxLayout(side)
-        sl.setContentsMargins(12, 18, 12, 14)
-        sl.setSpacing(3)
-        sl.addWidget(label("Lolitos Control", "brand"))
-        sl.addWidget(label("Otimização para jogos", "brandsub"))
-        sl.addSpacing(10)
+        sl.setContentsMargins(12, 18, 10, 12)
+        sl.setSpacing(4)
+        self.brand = Brand()
+        sl.addWidget(self.brand)
+        self.flags = QWidget()
+        fl = QHBoxLayout(self.flags)
+        fl.setContentsMargins(8, 8, 0, 4)
+        fl.setSpacing(8)
+        for code in ("pt", "es", "en"):
+            f = Flag(code, current() == code)
+            f.clicked.connect(self.set_language)
+            fl.addWidget(f)
+        fl.addStretch()
+        sl.addWidget(self.flags)
+        self.collapse_btn = NavButton("menu", "Recolher menu")
+        self.collapse_btn.setCheckable(False)
+        self.collapse_btn.clicked.connect(self.toggle_collapse)
+        sl.addWidget(self.collapse_btn)
+        sl.addSpacing(4)
         self.stack = QStackedWidget()
         self.group = QButtonGroup(self)
         self.index = {}
+        self.nav_buttons: list[NavButton] = []
+        self.nav_sections: list[QWidget] = []
         nav_scroll = QScrollArea()
         nav_scroll.setObjectName("navscroll")
         nav_scroll.setWidgetResizable(True)
@@ -99,20 +123,22 @@ class MainWindow(QMainWindow):
         nav_w = QWidget()
         nav_w.setObjectName("navlist")
         nl = QVBoxLayout(nav_w)
-        nl.setContentsMargins(0, 0, 4, 0)
+        nl.setContentsMargins(0, 0, 6, 0)
         nl.setSpacing(2)
         i = 0
         for section, items in _pages():
-            nl.addSpacing(6 if i else 0)
-            nl.addWidget(label(section, "navsec"))
-            for key, text, cls in items:
-                b = QPushButton(text)
-                b.setObjectName("nav")
-                b.setCheckable(True)
-                b.setCursor(Qt.PointingHandCursor)
+            nl.addSpacing(8 if i else 2)
+            sec = label(section, "navsec")
+            self.nav_sections.append(sec)
+            nl.addWidget(sec)
+            for key, ico, text, cls in items:
+                b = NavButton(ico, text, special=key == "completa", badge="NOVO" if key == "comparar" else "")
                 b.clicked.connect(lambda _=False, k=key: self.go(k))
                 self.group.addButton(b, i)
+                self.nav_buttons.append(b)
                 nl.addWidget(b)
+                if not cls.icon:
+                    cls.icon = ico          # o mesmo ícone no cabeçalho da tela
                 self.stack.addWidget(cls(self))
                 self.index[key] = i
                 i += 1
@@ -120,14 +146,15 @@ class MainWindow(QMainWindow):
         nav_scroll.setWidget(nav_w)
         sl.addWidget(nav_scroll, 1)
         self.update_btn = QPushButton("⟳  Procurar atualização")
-        self.update_btn.setObjectName("nav")
+        self.update_btn.setObjectName("update")
         self.update_btn.setCursor(Qt.PointingHandCursor)
         self.update_btn.setToolTip("Confere no GitHub se há versão nova do Lolitos Control")
         self.update_btn.clicked.connect(lambda: self.check_update(manual=True))
         sl.addWidget(self.update_btn)
-        sl.addWidget(label(f"v{VERSION}", "brandsub"))
         lay.addWidget(side)
         lay.addWidget(self.stack, 1)
+        if settings.get("nav_collapsed"):
+            self.toggle_collapse()
 
         from lolitos.i18n import translate_tree
         translate_tree(side)
@@ -144,6 +171,31 @@ class MainWindow(QMainWindow):
         if not settings.get("seen_analysis"):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(900, self.first_run)
+
+    # ---------------------------------------------------------------- barra lateral
+    def toggle_collapse(self):
+        col = self.side.width() > 100
+        self.side.setFixedWidth(68 if col else 256)
+        self.brand.set_collapsed(col)
+        self.flags.setVisible(not col)
+        for sec in self.nav_sections:
+            sec.setVisible(not col)
+        for b in self.nav_buttons + [self.collapse_btn]:
+            b.set_collapsed(col)
+        self.update_btn.setText("⟳" if col else ("⟳  " + __import__("lolitos.i18n", fromlist=["tr"]).tr(
+            "Procurar atualização")))
+        settings.set("nav_collapsed", col)
+
+    def set_language(self, code: str):
+        from lolitos.i18n import current, restart_text
+        from lolitos.ui.widgets import confirm
+        if code == current():
+            return
+        settings.set("lang", code)
+        if confirm(self, "Idioma", restart_text(code), yes="OK", no="Depois"):
+            from lolitos.core.system import relaunch_self
+            relaunch_self()
+            self.quit()
 
     # ---------------------------------------------------------------- navegação
     def go(self, key: str, bring: bool = False):

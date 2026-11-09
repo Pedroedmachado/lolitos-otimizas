@@ -149,3 +149,15 @@ register(
           "apps", [JsonKey(DISCORD, "SKIP_HOST_UPDATE", True)], ADVANCED, admin=False,
           loss="O Discord para de se atualizar sozinho; feche-o antes de aplicar."),
 )
+
+
+# Visualizador de Fotos clássico: o Windows 10/11 ainda traz o programa, só não o registra para fotos
+_PV = r"SOFTWARE\Microsoft\Windows Photo Viewer\Capabilities\FileAssociations"
+register(
+    Tweak("photo_viewer_classic", "Visualizador de Fotos clássico do Windows",
+          "Volta o visualizador antigo e leve (o do Windows 7) para a lista de 'Abrir com' de JPG, PNG, GIF, BMP e "
+          "TIFF. O app Fotos continua instalado.", "interface",
+          regs(HKLM, _PV, "sz", **{ext: "PhotoViewer.FileAssoc.Tiff" for ext in
+                             (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".jfif", ".wdp")}),
+          ADVANCED, gain="Abre fotos na hora, sem esperar o app Fotos carregar."),
+)

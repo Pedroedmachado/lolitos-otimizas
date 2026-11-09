@@ -1,6 +1,8 @@
 """Instalar apps pelo winget (catálogo do projeto WinUtil, licença MIT)."""
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QLineEdit, QListWidget, QListWidgetItem
+from PySide6.QtWidgets import QLineEdit
+
+from lolitos.i18n import tr
 
 from lolitos.modules import winget
 from lolitos.ui.widgets import Page, TaskDialog, button, confirm, hrow, info, label, run_async
@@ -19,66 +21,39 @@ class AppsPage(Page):
                 "pacotes oficial do Windows. Os instaladores vêm direto das fontes oficiais de cada programa.")
 
     def build(self):
+        from lolitos.ui.appgrid import AppGrid, chip_bar
+        from lolitos.ui.widgets import pill
+        self.count = pill("0 selecionado(s)")
+        self.actions.addWidget(self.count, 0, Qt.AlignTop)
         self.q = QLineEdit()
         self.q.setPlaceholderText("Buscar apps…")
-        self.q.textChanged.connect(self._filter)
-        self.cat = QComboBox()
-        self.cat.addItem("Todos", "")
-        for k, v in CATEGORIES.items():
-            self.cat.addItem(v, k)
-        self.cat.currentIndexChanged.connect(lambda: self._filter(self.q.text()))
-        self.body.addLayout(hrow(self.q, self.cat, stretch_first=True))
+        self.body.addLayout(hrow(self.q, button("Limpar seleção", on_click=lambda: self.grid.set_selected([])),
+                                 stretch_first=True))
         self.body.addLayout(hrow(button("Instalar/atualizar selecionados", "primary", self._install),
                                  button("Desinstalar selecionados", "danger", self._uninstall),
                                  button("Atualizar todos os apps instalados", on_click=self._upgrade_all), None))
+        self.grid = AppGrid(winget.catalog())
+        self.grid.changed.connect(lambda: self.count.setText(
+            tr("{} selecionado(s)").replace("{}", str(len(self.grid.selected())))))
+        self.q.textChanged.connect(lambda t: self.grid.set_filter(text=t))
+        self.body.addWidget(chip_bar(self.grid))
         self.status = label("Verificando o que já está instalado…", "muted")
         self.body.addWidget(self.status)
-        self.lst = QListWidget()
-        self.lst.setMinimumHeight(560)
-        self.lst.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.lst.customContextMenuRequested.connect(self._open_site)
-        self.body.addWidget(self.lst)
+        self.body.addWidget(self.grid)
+        self.body.addWidget(label("Catálogo de apps: projeto WinUtil (licença MIT). Clique direito em um app abre o "
+                                  "site oficial.", "muted"))
         self.installed: set[str] = set()
-        for a in winget.catalog():
-            it = QListWidgetItem(f"[{CATEGORIES.get(a.category, a.category)}] {a.name} — {a.desc[:90]}")
-            it.setData(Qt.UserRole, a.winget)
-            it.setData(Qt.UserRole + 1, a.category)
-            it.setData(Qt.UserRole + 2, a.link)
-            it.setToolTip(f"{a.winget}\n{a.link}\nClique direito: abrir o site")
-            it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
-            it.setCheckState(Qt.Unchecked)
-            self.lst.addItem(it)
-        self.body.addWidget(label("Catálogo de apps: projeto WinUtil (licença MIT).", "muted"))
         run_async(lambda: (winget.ensure_winget() and winget.installed_ids()) or set(), on_done=self._mark)
-
-    def _open_site(self, pos):
-        import webbrowser
-        it = self.lst.itemAt(pos)
-        if it and it.data(Qt.UserRole + 2):
-            webbrowser.open(it.data(Qt.UserRole + 2))
 
     def _mark(self, ids):
         self.installed = ids
-        n = 0
-        for i in range(self.lst.count()):
-            it = self.lst.item(i)
-            if it.data(Qt.UserRole).lower() in ids:
-                it.setText("● " + it.text().lstrip("● "))
-                n += 1
-        self.status.setText(f"{n} app(s) deste catálogo já instalados (bolinha ●)."
-                            if ids else "O winget não está disponível neste PC ou nada foi encontrado.")
-
-    def _filter(self, text):
-        text = text.lower()
-        cat = self.cat.currentData()
-        for i in range(self.lst.count()):
-            it = self.lst.item(i)
-            hide = (bool(text) and text not in it.text().lower()) or (cat and it.data(Qt.UserRole + 1) != cat)
-            it.setHidden(bool(hide))
+        self.grid.mark_installed(ids)
+        n = sum(1 for t in self.grid.tiles if t.installed)
+        self.status.setText(tr("{} app(s) deste catálogo já instalados (ponto verde).").replace("{}", str(n))
+                            if ids else tr("O winget não está disponível neste PC ou nada foi encontrado."))
 
     def _selected(self):
-        return [self.lst.item(i).data(Qt.UserRole) for i in range(self.lst.count())
-                if self.lst.item(i).checkState() == Qt.Checked]
+        return self.grid.selected()
 
     def _install(self):
         ids = self._selected()

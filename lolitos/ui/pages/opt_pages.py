@@ -5,13 +5,11 @@ from __future__ import annotations
 import json
 import re
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QGridLayout, QLineEdit, QProgressBar, QTabWidget, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import QComboBox, QProgressBar, QTabWidget, QVBoxLayout, QWidget
 
 from lolitos.core.system import resource_path
-from lolitos.i18n import tr
 from lolitos.core.tweaks import CATALOG, CATS, by_cat
-from lolitos.modules import antivirus, winget
+from lolitos.modules import antivirus
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
 from lolitos.ui.widgets import Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async
@@ -155,49 +153,132 @@ class GpuPage(_TweakPage):
 
 
 # ===================================================================== Defender e IA
-class DefenderAiPage(_TweakPage):
+class DefenderAiPage(Page):
     title = "Defender e IA"
-    subtitle = ("O antivírus deste PC e os recursos de inteligência artificial do Windows (Copilot, Recall, "
-                "sugestões). O app nunca desliga nem contorna a proteção do antivírus.")
+    subtitle = "Libere o Lolitos Control no seu antivírus para nenhum ajuste ser bloqueado e remova a IA do Windows."
 
-    def tweaks(self):
-        return by_cat("ia")
+    def build(self):
+        import sys
 
-    def extra_top(self):
-        av = Card()
-        av.lay.addWidget(label("Antivírus", "h2"))
-        av.lay.addWidget(label("Antivírus costumam bloquear mudanças no registro, serviços e tarefas, mesmo com o app "
-                               "como administrador. Se um ajuste aparecer como BLOQUEADO, libere o app no seu "
-                               "antivírus (ele só marca a si mesmo como confiável).", "muted"))
-        self.av_lbl = label("Lendo o antivírus…", rich=True)
-        av.lay.addWidget(self.av_lbl)
-        av.lay.addLayout(hrow(button("Liberar este app no Microsoft Defender", on_click=self._def_add),
-                              button("Remover a liberação", on_click=self._def_rm), None))
-        self.body.addWidget(av)
-        self.body.addWidget(label("Inteligência artificial do Windows", "h2"))
+        from lolitos.ui.widgets import card_header, pill
+        self.body.addWidget(label("Liberar o Lolitos Control no antivírus", "h2"))
+        self.body.addWidget(label("Funciona com qualquer antivírus registrado no Windows (Defender, Kaspersky, AVG, "
+                                  "Avast, Norton, ESET, Bitdefender, McAfee…). O app nunca desliga nem contorna a "
+                                  "proteção: só marca a si mesmo como confiável.", "muted"))
+        self.def_card = Card()
+        self.def_state = pill("…")
+        self.def_card.lay.addLayout(card_header("shield", "Windows Defender", self.def_state))
+        self.def_txt = label("Lendo o antivírus…", "muted", rich=True)
+        self.def_card.lay.addWidget(self.def_txt)
+        self.def_add = button("Liberar no Defender agora", "primary", self._def_add)
+        self.def_rm = button("Remover a liberação", on_click=self._def_rm)
+        self.def_card.lay.addLayout(hrow(self.def_add, self.def_rm, None))
+        self.body.addWidget(self.def_card)
+        self.others = QVBoxLayout()
+        self.body.addLayout(self.others)
+        exe = sys.executable if getattr(sys, "frozen", False) else str(antivirus.app_folder())
+        self.exe = exe
+        self.body.addWidget(label(f"Caminho do app: <b>{exe}</b><br>Pasta: <b>{antivirus.app_folder()}</b>",
+                                  "muted", rich=True))
+        self.body.addLayout(hrow(button("Copiar caminho do app", on_click=self._copy),
+                                 button("Abrir pasta do app", on_click=lambda: _open(str(antivirus.app_folder()))),
+                                 None))
+        ia = Card(hero=True)
+        self.ia_count = pill("…")
+        ia.lay.addLayout(card_header("bolt", "Remover toda a IA do Windows", self.ia_count))
+        ia.lay.addWidget(label("Desliga por política o Copilot, o Recall, o Clique para Fazer e a IA dos apps e da "
+                               "pesquisa, e remove os componentes de IA. Tudo fica no histórico e pode ser desfeito "
+                               "em Restauração.", "muted"))
+        self.ia_state = label("", "muted")
+        ia.lay.addWidget(self.ia_state)
+        self.list_btn = button("Escolher item por item", on_click=self._toggle_list)
+        ia.lay.addLayout(hrow(button("Remover toda a IA", "primary", self._remove_ai), self.list_btn, None))
+        self.body.addWidget(ia)
+        self.tl = TweakList(by_cat("ia"), self)
+        self.tl.setVisible(False)
+        self.body.addWidget(self.tl)
         run_async(antivirus.products, on_done=self._av)
+        self._ia_status()
+
+    def on_show(self):
+        if self._built:
+            self._ia_status()
+
+    def _ia_status(self):
+        def scan():
+            ts = by_cat("ia")
+            return sum(1 for t in ts if t.status() == "on"), len(ts)
+
+        def done(r):
+            on, tot = r
+            self.ia_count.setText(f"{on}/{tot}")
+            self.ia_count.setStyleSheet(f"color:{C['ok'] if on == tot else C['gold']};")
+            self.ia_state.setText(f"{on} de {tot} bloqueios de IA ativos.")
+        run_async(scan, on_done=done, _pool=__import__("lolitos.ui.widgets", fromlist=["x"]).status_pool())
 
     def _av(self, prods):
-        if not prods:
-            self.av_lbl.setText("Nenhum antivírus registrado na Central de Segurança do Windows.")
-            return
-        lines = []
+        from lolitos.ui.widgets import card_header, pill
+        d = next((p for p in prods if "defender" in p["name"].lower()), None)
+        has = antivirus.defender_has_app()
+        if d:
+            self.def_state.setText("ATIVO" if d["realtime"] else "DESLIGADO")
+            self.def_state.setStyleSheet(f"color:{C['accent2'] if d['realtime'] else C['muted']};")
+        else:
+            self.def_state.setText("NÃO É O ANTIVÍRUS ATIVO")
+        if has:
+            self.def_txt.setText(f"<span style='color:{C['ok']}'>O Defender já confia no Lolitos Control.</span>")
+        elif d and d["realtime"]:
+            self.def_txt.setText("O Defender ainda verifica o Lolitos Control em tempo real e pode bloquear ajustes.")
+        else:
+            self.def_txt.setText("O Defender não está protegendo em tempo real; veja o seu antivírus abaixo.")
+        self.def_add.setVisible(not has)
+        self.def_rm.setVisible(bool(has))
         for p in prods:
-            st = (f"<span style='color:{C['ok']}'>proteção em tempo real ligada</span>" if p["realtime"]
-                  else f"<span style='color:{C['warn']}'>tempo real desligado</span>")
-            g = "" if "defender" in p["name"].lower() else (f"<br><span style='color:{C['muted']}'>Como liberar: "
-                                                             f"{antivirus.guide_for(p['name'])}</span>")
-            lines.append(f"<b>{p['name']}</b> · {st}{g}")
-        lines.append(f"<span style='color:{C['muted']}'>Pasta do app: {antivirus.app_folder()}</span>")
-        self.av_lbl.setText("<br>".join(lines))
+            if "defender" in p["name"].lower():
+                continue
+            c = Card()
+            st = pill("ATIVO" if p["realtime"] else "DESLIGADO", C["accent2"] if p["realtime"] else C["muted"])
+            c.lay.addLayout(card_header("shield", p["name"], st))
+            c.lay.addWidget(label("Como liberar: " + antivirus.guide_for(p["name"]), "muted"))
+            self.others.addWidget(c)
+
+    def _copy(self):
+        from PySide6.QtGui import QGuiApplication
+        QGuiApplication.clipboard().setText(self.exe)
+        info(self, "Copiado", "Caminho do app copiado.")
 
     def _def_add(self):
         ok, msg = antivirus.defender_add_app()
         info(self, "Defender", "O Defender agora confia neste app." if ok else msg or "Não foi possível.")
+        run_async(antivirus.products, on_done=self._refresh_av)
 
     def _def_rm(self):
         ok, msg = antivirus.defender_remove_app()
         info(self, "Defender", "Liberação removida." if ok else msg or "Não foi possível.")
+        run_async(antivirus.products, on_done=self._refresh_av)
+
+    def _refresh_av(self, prods):
+        while self.others.count():
+            w = self.others.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        self._av(prods)
+
+    def _toggle_list(self):
+        self.tl.setVisible(not self.tl.isVisible())
+        if self.tl.isVisible():
+            self.tl.refresh()
+
+    def _remove_ai(self):
+        from lolitos.ui.tweaklist import bulk_apply
+        if not confirm(self, "Remover toda a IA", "Aplicar todos os bloqueios de IA do Windows?<br><br>Tudo pode ser "
+                       "desfeito em Restauração.", yes="Remover"):
+            return
+
+        def work(progress=None):
+            ts = [t for t in by_cat("ia") if t.status() not in ("on", "na")]
+            return bulk_apply(ts, progress) if ts else "Nada pendente."
+        TaskDialog(self, "Remover toda a IA", work, on_done=lambda _: (self._ia_status(), self.tl.refresh())).exec()
 
 
 # ===================================================================== Formatação
@@ -268,152 +349,12 @@ FRESH_DEFAULT = {"Google.Chrome", "Discord.Discord", "Valve.Steam", "7zip.7zip",
                  "Microsoft.VCRedist.2015+.x86", "Microsoft.DirectX", "Microsoft.DotNet.DesktopRuntime.8"}
 
 
-class FreshPage(Page):
-    title = "Formatação"
-    subtitle = ("Acabou de formatar ou comprou um PC novo? Escolha o que fazer e o app deixa o Windows pronto para "
-                "jogar de uma vez: ponto de restauração, ajustes recomendados para este PC, remoção do que vem "
-                "sobrando, seus programas e limpeza.")
-
-    def build(self):
-        steps = Card(hero=True)
-        steps.lay.addWidget(label("O que fazer", "h2"))
-        self.s_rp = QCheckBox("Criar um ponto de restauração antes de tudo")
-        self.s_boost = QCheckBox("Aplicar os ajustes recomendados para este PC (os mesmos do Boost)")
-        self.s_debloat = QCheckBox("Remover apps pré-instalados que quase ninguém usa (só os recomendados)")
-        self.s_apps = QCheckBox("Instalar os programas marcados abaixo (winget, fontes oficiais)")
-        self.s_clean = QCheckBox("Limpar arquivos temporários no final")
-        for ck in (self.s_rp, self.s_boost, self.s_debloat, self.s_apps, self.s_clean):
-            ck.setChecked(True)
-            steps.lay.addWidget(ck)
-        self.body.addWidget(steps)
-
-        apps = Card()
-        apps.lay.addWidget(label("Programas", "h2"))
-        self.q = QLineEdit()
-        self.q.setPlaceholderText("Buscar programa…")
-        self.q.textChanged.connect(self._filter)
-        self.sel = label("", "muted", wrap=False)
-        apps.lay.addLayout(hrow(self.q, button("Só os essenciais", on_click=self._only_default),
-                                button("Desmarcar tudo", on_click=lambda: self._set_all(False)), self.sel,
-                                stretch_first=True))
-        self.app_cks: list[tuple[QCheckBox, str]] = []
-        self.groups: list[tuple[QWidget, list[QCheckBox], QCheckBox]] = []
-        for title, note, items in FRESH_GROUPS:
-            box = QWidget()
-            bl = QVBoxLayout(box)
-            bl.setContentsMargins(0, 8, 0, 0)
-            bl.setSpacing(4)
-            g_all = QCheckBox(f"{tr(title)} ({len(items)})")
-            g_all.setStyleSheet("font-weight:700;")
-            bl.addWidget(g_all)
-            if note:
-                bl.addWidget(label(note, "muted"))
-            grid = QGridLayout()
-            grid.setHorizontalSpacing(16)
-            cks = []
-            for i, (name, wid) in enumerate(items):
-                ck = QCheckBox(name.replace("&", "&&"))      # "&" sozinho vira atalho de teclado no Qt
-                ck.setChecked(wid in FRESH_DEFAULT)
-                ck.setToolTip(wid)
-                ck.toggled.connect(self._count)
-                grid.addWidget(ck, i // 3, i % 3)
-                self.app_cks.append((ck, wid))
-                cks.append(ck)
-            g_all.setChecked(all(c.isChecked() for c in cks))
-            g_all.clicked.connect(lambda v, cc=cks: [c.setChecked(v) for c in cc if c.isVisible() or not self.q.text()])
-            bl.addLayout(grid)
-            apps.lay.addWidget(box)
-            self.groups.append((box, cks, g_all))
-        apps.lay.addWidget(label("Os instaladores vêm direto das fontes oficiais de cada programa pelo winget. "
-                                 "Mais de 300 outros programas em Instalar apps.", "muted"))
-        self.body.addWidget(apps)
-        self._count()
-        run_async(lambda: (winget.ensure_winget() and winget.installed_ids()) or set(), on_done=self._mark)
-
-        drv = Card()
-        drv.lay.addWidget(label("Drivers", "h2"))
-        drv.lay.addWidget(label(
-            "Instale o driver da placa de vídeo pelo site do fabricante (NVIDIA App, AMD Adrenalin ou Intel Arc) e "
-            "o do chipset pelo site da placa-mãe. O Windows Update instala versões genéricas, mais antigas.",
-            "muted"))
-        drv.lay.addLayout(hrow(
-            button("NVIDIA", on_click=lambda: _open("https://www.nvidia.com/pt-br/drivers/")),
-            button("AMD", on_click=lambda: _open("https://www.amd.com/pt/support/download/drivers.html")),
-            button("Intel", on_click=lambda: _open("https://www.intel.com.br/content/www/br/pt/download-center/home.html")),
-            None))
-        self.body.addWidget(drv)
-        self.go_btn = button("Preparar meu Windows", "primary", self._run)
-        self.go_btn.setMinimumHeight(42)
-        self.body.addLayout(hrow(self.go_btn, None))
-
-    def _mark(self, have):
-        """Programas já instalados ficam marcados com ✓ e desmarcados."""
-        have = {h.lower() for h in have}
-        for ck, wid in self.app_cks:
-            if wid.lower() in have:
-                ck.setChecked(False)
-                ck.setText(ck.text() + " ✓")
-                ck.setToolTip(f"{wid} — já instalado")
-        self._count()
-
-    def _count(self, *_):
-        n = sum(1 for ck, _ in self.app_cks if ck.isChecked())
-        self.sel.setText(f"{n} selecionado(s)")
-        for _, cks, head in getattr(self, "groups", []):
-            head.blockSignals(True)
-            head.setChecked(all(c.isChecked() for c in cks))
-            head.blockSignals(False)
-
-    def _set_all(self, v):
-        for ck, _ in self.app_cks:
-            ck.setChecked(v)
-
-    def _only_default(self):
-        for ck, wid in self.app_cks:
-            ck.setChecked(wid in FRESH_DEFAULT and not ck.text().endswith("✓"))
-
-    def _filter(self, text):
-        text = text.lower().strip()
-        for box, cks, _ in self.groups:
-            vis = 0
-            for ck in cks:
-                show = not text or text in ck.text().lower() or text in ck.toolTip().lower()
-                ck.setVisible(show)
-                vis += show
-            box.setVisible(vis > 0)
-
-    def _run(self):
-        ids = [w for ck, w in self.app_cks if ck.isChecked()] if self.s_apps.isChecked() else []
-        todo = [n for ck, n in ((self.s_rp, "ponto de restauração"), (self.s_boost, "ajustes recomendados"),
-                                (self.s_debloat, "remoção de apps"), (self.s_clean, "limpeza")) if ck.isChecked()]
-        if ids:
-            todo.insert(-1 if self.s_clean.isChecked() else len(todo), f"{len(ids)} programa(s)")
-        if not todo:
-            info(self, "Formatação", "Marque pelo menos uma etapa.")
-            return
-        if not confirm(self, "Preparar o Windows", "Vai fazer, nesta ordem:<br>• " + "<br>• ".join(todo) +
-                       "<br><br>Pode levar de 5 a 30 minutos dependendo da internet. Tudo que for ajuste pode ser "
-                       "desfeito em Restauração.", yes="Começar"):
-            return
-        TaskDialog(self, "Preparando o Windows", fresh_setup, self.s_rp.isChecked(), self.s_boost.isChecked(),
-                   self.s_debloat.isChecked(), ids, self.s_clean.isChecked(),
-                   on_done=lambda _: self._done()).exec()
-
-    def _done(self):
-        if self.main:
-            self.main.changed()
-        if confirm(self, "Formatação", "Pronto. Vários ajustes só valem depois de reiniciar. Reiniciar o PC agora?",
-                   yes="Reiniciar agora", no="Depois"):
-            from lolitos.core.system import run
-            run(["shutdown", "/r", "/t", "5", "/c", "Lolitos Control: reiniciando para concluir os ajustes."])
-
-
 def _open(url):
     import webbrowser
     webbrowser.open(url)
 
 
-def fresh_setup(rp, boost, debloat, app_ids, clean, progress=None):
+def fresh_setup(rp, boost, debloat, app_ids, clean, extras=(), progress=None):
     from lolitos.catalog.debloat import DEBLOAT_TWEAKS
     from lolitos.catalog.presets import boost_ids
     from lolitos.core import restore
@@ -444,6 +385,10 @@ def fresh_setup(rp, boost, debloat, app_ids, clean, progress=None):
                 say(f"   {wid}…")
                 r = winget.install_or_upgrade(wid, have)
                 say("      ok" if r.ok else f"      código {r.code}")
+    if extras:
+        say("Extras…")
+        ex = [CATALOG[i] for i in extras if i in CATALOG and CATALOG[i].status() not in ("on", "na")]
+        say("   " + (bulk_apply(ex, say, restore_point=False) if ex else "já estavam aplicados.").replace("\n", "\n   "))
     if clean:
         say("5. Limpando temporários…")
         freed = 0
@@ -577,5 +522,4 @@ class GpuComparePage(Page):
         self.rank.setText("<table cellspacing=3>" + "".join(rows) + "</table>")
 
 
-__all__ = ["WindowsPage", "MousePage", "KeyboardPage", "GpuPage", "DefenderAiPage", "FreshPage", "GpuComparePage"
-           ]
+__all__ = ["WindowsPage", "MousePage", "KeyboardPage", "GpuPage", "DefenderAiPage", "GpuComparePage"]

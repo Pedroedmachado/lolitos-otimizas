@@ -17,8 +17,9 @@ GWL_EXSTYLE = -20
 WS_EX_LAYERED, WS_EX_TRANSPARENT = 0x80000, 0x20
 WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE, WS_EX_TOPMOST = 0x80, 0x08000000, 0x8
 
-LABELS = {"fps": "FPS", "cpu": "CPU", "cpu_temp": "CPU °C", "gpu": "GPU", "gpu_temp": "GPU °C", "vram": "VRAM",
-          "ram": "RAM", "ping": "PING"}
+LABELS = {"fps": "FPS", "frametime": "FRAME", "low1": "1% LOW", "cpu": "CPU", "cpu_temp": "CPU °C",
+          "cpu_freq": "CPU CLK", "gpu": "GPU", "gpu_temp": "GPU °C", "gpu_freq": "GPU CLK", "vram": "VRAM",
+          "ram": "RAM", "ping": "PING", "game": "JOGO"}
 
 
 class Overlay(QWidget):
@@ -60,16 +61,6 @@ class Overlay(QWidget):
             self.fps_reader.stop()
             self.fps_reader = None
 
-    def place(self):
-        items = settings.get("overlay_items")
-        h = 14 + 22 * max(1, len(items))
-        w = 210
-        scr = QApplication.primaryScreen().geometry()
-        corner = settings.get("overlay_corner")
-        x = scr.left() + 12 if "left" in corner else scr.right() - w - 12
-        y = scr.top() + 12 if "top" in corner else scr.bottom() - h - 12
-        self.setGeometry(x, y, w, h)
-
     # ---------------------------------------------------------------- dados
     def slow_tick(self):
         from lolitos.ui.widgets import run_async
@@ -78,7 +69,7 @@ class Overlay(QWidget):
             run_async(lambda: sensors.cpu_temp(3)[0], on_done=lambda v: setattr(self, "cpu_t", v))
         if "ping" in items:
             run_async(self._measure_ping, on_done=lambda v: setattr(self, "ping", v))
-        if "fps" in items:
+        if any(k in items for k in ("fps", "frametime", "low1", "game")):
             self._ensure_fps()
 
     def _ensure_fps(self):
@@ -132,58 +123,134 @@ class Overlay(QWidget):
         return rtt if st == 0 else None
 
     def tick(self):
-        items = settings.get("overlay_items")
-        g = gpu.read()
-        out = []
-        for k in items:
-            v, col = "—", "#f2f6fc"
-            if k == "fps" and self.fps_reader:
-                f, low = self.fps_reader.stats()
-                if f:
-                    v = f"{f:.0f}  (1% {low:.0f})"
-                    col = "#4ade80" if f >= 60 else "#f5b82e" if f >= 40 else "#ff4d5e"
-                elif self.fps_reader.error and not self.fps_reader.is_alive():
-                    v, col = "erro", "#ff4d5e"
-            elif k == "fps":
-                v = "sem PresentMon"
-            elif k == "cpu":
-                v = f"{psutil.cpu_percent():.0f}%"
-            elif k == "cpu_temp" and self.cpu_t:
-                v = f"{self.cpu_t:.0f} °C"
-                col = "#ff4d5e" if self.cpu_t > 88 else "#f2f6fc"
-            elif k == "gpu" and g.get("util") is not None:
-                v = f"{g['util']}%"
-            elif k == "gpu_temp" and g.get("temp") is not None:
-                v = f"{g['temp']} °C"
-                col = "#ff4d5e" if g["temp"] > 83 else "#f2f6fc"
-            elif k == "vram" and g.get("vram_used"):
-                v = f"{g['vram_used'] / 1024**3:.1f} / {g['vram_total'] / 1024**3:.0f} GB"
-            elif k == "ram":
-                v = f"{psutil.virtual_memory().percent:.0f}%"
-            elif k == "ping" and self.ping:
-                v = f"{self.ping:.0f} ms"
-                col = "#4ade80" if self.ping < 60 else "#f5b82e" if self.ping < 120 else "#ff4d5e"
-            out.append((LABELS[k], v, col))
-        self.lines = out
+        self.lines = compute_lines(self.fps_reader, self.cpu_t, self.ping)
         self.place()
         self.update()
 
+    def place(self):
+        sz = overlay_size(self.lines)
+        scr = QApplication.primaryScreen().geometry()
+        corner = settings.get("overlay_corner")
+        x = scr.left() + 12 if "left" in corner else scr.right() - sz[0] - 12
+        y = scr.top() + 12 if "top" in corner else scr.bottom() - sz[1] - 12
+        self.setGeometry(x, y, *sz)
+
     def paintEvent(self, _):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        bg = QColor(5, 11, 22)
-        bg.setAlphaF(float(settings.get("overlay_opacity")))
-        p.setBrush(bg)
-        p.setPen(Qt.NoPen)
-        p.drawRoundedRect(self.rect(), 8, 8)
-        p.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        y = 24
-        for name, v, col in self.lines:
-            p.setPen(QColor("#5cc8ff"))
-            p.drawText(10, y, name)
+        paint_lines(p, self.lines)
+
+
+# ------------------------------------------------------------------ conteúdo e desenho (overlay e prévia)
+OK, MID, BAD, TXT, KEY = "#4ade80", "#f5b82e", "#ff4d5e", "#f2f6fc", "#8fb8de"
+
+
+def compute_lines(fps_reader, cpu_t, ping) -> list[tuple[str, str, str]]:
+    """(rótulo, valor, cor) na ordem escolhida em Configurações › Overlay."""
+    items = settings.get("overlay_items")
+    g = gpu.read() if any(k.startswith(("gpu", "vram")) for k in items) else {}
+    f = low = None
+    game = ""
+    if fps_reader is not None:
+        f, low, game = fps_reader.stats_named()
+    out = []
+    for k in items:
+        v, col = "—", TXT
+        if k == "fps":
+            if f:
+                v, col = f"{f:.0f}", (OK if f >= 60 else MID if f >= 40 else BAD)
+            elif fps_reader is None:
+                v = "sem PresentMon"
+            elif fps_reader.error and not fps_reader.is_alive():
+                v, col = "erro", BAD
+        elif k == "frametime" and f:
+            v = f"{1000 / f:.1f} ms"
+        elif k == "low1" and low:
+            v = f"{low:.0f}"
+        elif k == "cpu":
+            v = f"{psutil.cpu_percent():.0f}%"
+        elif k == "cpu_temp" and cpu_t:
+            v, col = f"{cpu_t:.0f}°C", (BAD if cpu_t > 88 else MID if cpu_t > 80 else OK)
+        elif k == "cpu_freq":
+            fr = psutil.cpu_freq()
+            if fr and fr.current:
+                v = f"{fr.current / 1000:.2f} GHz"
+        elif k == "gpu" and g.get("util") is not None:
+            v = f"{g['util']}%"
+        elif k == "gpu_temp" and g.get("temp") is not None:
+            v, col = f"{g['temp']}°C", (BAD if g["temp"] > 83 else MID if g["temp"] > 75 else OK)
+        elif k == "gpu_freq" and g.get("clock") is not None:
+            v = f"{g['clock']} MHz"
+        elif k == "vram" and g.get("vram_used"):
+            v = f"{g['vram_used'] / 1024**3:.1f}/{g['vram_total'] / 1024**3:.0f} GB"
+        elif k == "ram":
+            v = f"{psutil.virtual_memory().percent:.0f}%"
+        elif k == "ping" and ping:
+            v, col = f"{ping:.0f} ms", (OK if ping < 60 else MID if ping < 120 else BAD)
+        elif k == "game":
+            v = game.rsplit(".", 1)[0] if game else "—"
+        if k in LABELS:
+            out.append((LABELS[k], v, col))
+    return out
+
+
+def _metrics(lines) -> tuple[float, bool, QFont, QFont]:
+    scale = float(settings.get("overlay_scale") or 1.0)
+    horiz = settings.get("overlay_layout") == "horizontal"
+    fk = QFont("Segoe UI", max(6, int(round(7.5 * scale))), QFont.DemiBold)
+    fv = QFont("Segoe UI", max(7, int(round(11 * scale))), QFont.Bold)
+    return scale, horiz, fk, fv
+
+
+def overlay_size(lines) -> tuple[int, int]:
+    from PySide6.QtGui import QFontMetrics
+    scale, horiz, fk, fv = _metrics(lines)
+    mk, mv = QFontMetrics(fk), QFontMetrics(fv)
+    n = max(1, len(lines))
+    if horiz:
+        w = sum(mk.horizontalAdvance(k) + mv.horizontalAdvance(v) + int(22 * scale) for k, v, _ in lines) + 12
+        return max(60, w), int(30 * scale)
+    kw = max([mk.horizontalAdvance(k) for k, _, _ in lines] or [40])
+    vw = max([mv.horizontalAdvance(v) for _, v, _ in lines] or [40])
+    return int(kw + vw + 44 * scale), int(14 * scale + 24 * scale * n)
+
+
+def paint_lines(p: QPainter, lines, rect=None):
+    p.setRenderHint(QPainter.Antialiasing)
+    scale, horiz, fk, fv = _metrics(lines)
+    w, h = overlay_size(lines)
+    if rect is not None:
+        p.translate(rect.x(), rect.y())
+    bg = QColor(5, 11, 22)
+    bg.setAlphaF(float(settings.get("overlay_opacity")))
+    p.setBrush(bg)
+    p.setPen(QColor(30, 155, 255, 60))
+    p.drawRoundedRect(0, 0, w - 1, h - 1, 8 * scale, 8 * scale)
+    from PySide6.QtGui import QFontMetrics
+    mk, mv = QFontMetrics(fk), QFontMetrics(fv)
+    if horiz:
+        x = 10
+        base = int(h / 2 + mv.ascent() / 2 - 2)
+        for name, v, col in lines:
+            p.setFont(fk)
+            p.setPen(QColor(KEY))
+            p.drawText(x, base, name)
+            x += mk.horizontalAdvance(name) + int(6 * scale)
+            p.setFont(fv)
             p.setPen(QColor(col))
-            p.drawText(84, y, v)
-            y += 22
+            p.drawText(x, base, v)
+            x += mv.horizontalAdvance(v) + int(16 * scale)
+        return
+    y = int(7 * scale)
+    row = 24 * scale
+    for name, v, col in lines:
+        base = int(y + row / 2 + mv.ascent() / 2 - 2)
+        p.setFont(fk)
+        p.setPen(QColor(KEY))
+        p.drawText(int(12 * scale), base, name)
+        p.setFont(fv)
+        p.setPen(QColor(col))
+        p.drawText(int(w - 12 * scale - mv.horizontalAdvance(v)), base, v)
+        y += row
 
 
 # ------------------------------------------------------------------ tecla global

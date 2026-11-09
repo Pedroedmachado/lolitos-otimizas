@@ -1,7 +1,7 @@
 # Lolitos Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.6.2. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.7.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.6.2-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.7.0-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -47,6 +47,23 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 1.7.0
+
+* **Interface nova:** barra lateral com logo, bandeiras de idioma, *Recolher menu* e ícones de linha do Windows;
+  cada tela com cabeçalho de ícone, blocos de número e chaves liga/desliga.
+* **Painel:** saudação, aviso de otimização pendente, velocímetro da pontuação, cartões de pontos de restauração,
+  arquivos para limpar e memória, atalho para Windows recém-formatado e monitor em tempo real (CPU, GPU, RAM, disco,
+  rede) com gráfico de 60 s.
+* **Hardware Monitor (novo):** clock e uso de cada núcleo, temperaturas, clocks e energia da placa de vídeo, memória,
+  discos e rede, com mínimo, máximo e gravação em CSV.
+* **Otimização Completa (nova):** tudo que é recomendado para o PC, por área, aplicado de uma vez.
+* **Formatação e Instalar apps** em grade com ícones, filtros por categoria, instalados, selecionados e código aberto;
+  Boost completo, extras (Visualizador de Fotos clássico, remover OneDrive) e *Iniciar configuração*.
+* **Ferramentas refeitas:** teste do mouse com Atual/Máximo/Resposta/Amostras; overlay com prévia ao vivo, formato
+  vertical ou horizontal, tamanho, tempo de quadro, 1% low, clocks e nome do jogo; teste de monitor com seus monitores,
+  taxa máxima e opções do teste de movimento; teste de velocidade com botão INICIAR; perda de pacotes com blocos de
+  número; Defender e IA; check-up em lista.
 
 ## Novidades da 1.6.2
 
