@@ -233,12 +233,21 @@ class Page(QWidget):
             self.body.addWidget(label(self.subtitle, "muted"))
         self._built = False
 
-    def showEvent(self, e):
-        super().showEvent(e)
-        if not self._built:
-            self._built = True
+    def ensure_built(self):
+        """Monta o conteúdo uma vez, sem desenhar pela metade."""
+        if self._built:
+            return
+        self._built = True
+        self.setUpdatesEnabled(False)
+        try:
             self.build()
             self.body.addStretch()
+        finally:
+            self.setUpdatesEnabled(True)
+
+    def showEvent(self, e):
+        self.ensure_built()
+        super().showEvent(e)
         self.on_show()
 
     def build(self):

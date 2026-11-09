@@ -88,21 +88,42 @@ class MainWindow(QMainWindow):
         self._tray()
         self.go("painel")
         self.register_hotkey()
+        self.prebuild_pages()
         if not settings.get("seen_analysis"):
             from PySide6.QtCore import QTimer
             QTimer.singleShot(900, self.first_run)
 
     # ---------------------------------------------------------------- navegação
-    def go(self, key: str):
+    def go(self, key: str, bring: bool = False):
+        """Troca de tela. Só traz a janela para frente quando pedido (bandeja/atalhos) — reativar a janela
+        a cada clique fazia o Windows piscar."""
         i = self.index.get(key, 0)
+        page = self.stack.widget(i)
+        if hasattr(page, "ensure_built"):
+            page.ensure_built()
         self.stack.setCurrentIndex(i)
         self.group.button(i).setChecked(True)
-        if self.isMinimized():
-            self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
-        if not self.isVisible():
-            self.show()
-        self.raise_()
-        self.activateWindow()
+        if bring:
+            if self.isMinimized():
+                self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
+            if not self.isVisible():
+                self.show()
+            self.raise_()
+            self.activateWindow()
+
+    def prebuild_pages(self):
+        """Monta as outras telas aos poucos, com o app parado, para a primeira visita ser instantânea."""
+        from PySide6.QtCore import QTimer
+        pending = [self.stack.widget(i) for i in range(self.stack.count())]
+
+        def step():
+            while pending:
+                pg = pending.pop(0)
+                if hasattr(pg, "ensure_built") and not pg._built:
+                    pg.ensure_built()
+                    QTimer.singleShot(250, step)
+                    return
+        QTimer.singleShot(1500, step)
 
     def changed(self):
         settings.set("dirty", True)
@@ -136,14 +157,14 @@ class MainWindow(QMainWindow):
         self.tray = QSystemTrayIcon(icon(), self)
         self.tray.setToolTip(APP_NAME)
         m = QMenu()
-        m.addAction("Abrir", lambda: self.go("painel"))
-        m.addAction("Jogos", lambda: self.go("jogos"))
-        m.addAction("Black Desert", lambda: self.go("bdo"))
+        m.addAction("Abrir", lambda: self.go("painel", bring=True))
+        m.addAction("Jogos", lambda: self.go("jogos", bring=True))
+        m.addAction("Black Desert", lambda: self.go("bdo", bring=True))
         m.addAction("Mostrar/ocultar overlay", self.overlay_toggle)
         m.addSeparator()
         m.addAction("Sair", self.quit)
         self.tray.setContextMenu(m)
-        self.tray.activated.connect(lambda r: self.go("painel") if r == QSystemTrayIcon.Trigger else None)
+        self.tray.activated.connect(lambda r: self.go("painel", bring=True) if r == QSystemTrayIcon.Trigger else None)
         self.tray.show()
 
     def closeEvent(self, e):

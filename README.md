@@ -1,7 +1,7 @@
 # Lolitos Otimizações
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.3.1.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.3.2.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosOtimizacoes-1.3.1-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosOtimizacoes-1.3.2-Setup.exe`.
 O instalador tem assistente em português, termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -35,6 +35,12 @@ Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosOtimi
 | **Hardware** | CPU, RAM (XMP/EXPO, dual channel, slots), placa-mãe/BIOS, GPU (link PCIe via NVML), monitores, discos, TPM/Secure Boot; monitor ao vivo com gravação em CSV |
 | **Overlay** | FPS (via PresentMon), CPU/GPU, temperaturas, VRAM, RAM e ping por cima do jogo; tecla global |
 | **Restauração** | Histórico com desfazer item a item, reverter tudo, pontos de restauração |
+
+## Novidades da 1.3.2
+
+* Sem a piscada ao trocar de tela: a janela não é mais reativada a cada clique no menu.
+* As telas são montadas em segundo plano logo depois que o app abre, sem desenho pela metade.
+* Iniciar com o Windows (`--tray`) volta a abrir só na bandeja.
 
 ## Novidades da 1.3.1
 

@@ -2,5 +2,5 @@
 
 APP_NAME = "Lolitos Otimizações"
 APP_ID = "LolitosOtimizacoes"          # nome de pasta/arquivos (sem acento)
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 POWER_PLAN_NAME = "Lolitos Desempenho"

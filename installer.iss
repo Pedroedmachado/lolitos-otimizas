@@ -1,7 +1,7 @@
 ﻿; Instalador do Lolitos Otimizações (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Lolitos Otimizações"
-#define AppVersion "1.3.1"
+#define AppVersion "1.3.2"
 #define AppExe "LolitosOtimizacoes.exe"
 #define AppId "LolitosOtimizacoes"
 
