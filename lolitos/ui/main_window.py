@@ -1,8 +1,6 @@
 """Janela principal: barra lateral, páginas, bandeja e tecla global do overlay."""
 from __future__ import annotations
 
-import ctypes
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMainWindow, QMenu,
                                QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
@@ -15,8 +13,6 @@ from lolitos.ui.icon import icon
 from lolitos.ui.overlay import Overlay, parse_hotkey
 from lolitos.ui.widgets import label
 
-HOTKEY_ID = 0x4C4F   # 'LO'
-WM_HOTKEY = 0x0312
 
 
 def _pages():
@@ -197,18 +193,13 @@ class MainWindow(QMainWindow):
         hk = parse_hotkey(settings.get("overlay_hotkey") or "")
         if not hk:
             return False
-        return bool(ctypes.windll.user32.RegisterHotKey(int(self.winId()), HOTKEY_ID, hk[0], hk[1]))
+        from lolitos.ui.overlay import HotkeyThread
+        from lolitos.ui.widgets import ui_call
+        self._hotkey = HotkeyThread(hk[0], hk[1], lambda: ui_call(self.overlay_toggle))
+        return self._hotkey.start()
 
     def unregister_hotkey(self):
-        if IS_WIN:
-            ctypes.windll.user32.UnregisterHotKey(int(self.winId()), HOTKEY_ID)
-
-    def nativeEvent(self, event_type, message):
-        et = event_type.data() if hasattr(event_type, "data") else bytes(event_type)
-        if IS_WIN and et == b"windows_generic_MSG":
-            from ctypes import wintypes
-            msg = wintypes.MSG.from_address(int(message))
-            if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
-                self.overlay_toggle()
-                return True, 0
-        return super().nativeEvent(event_type, message)
+        hk = getattr(self, "_hotkey", None)
+        if hk:
+            hk.stop()
+            self._hotkey = None

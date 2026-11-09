@@ -159,7 +159,11 @@ class HardwarePage(Page):
             if d and self.prev_disk else 0
         self.prev_net, self.prev_disk, self.prev_t = n, d, now
         g = gpu.read()
-        ctemp, src = sensors.cpu_temp(10)
+        # temperatura da CPU vem do PowerShell: nunca na thread da interface
+        if time.time() - getattr(self, "_ct_t", 0) > 10:
+            self._ct_t = time.time()
+            run_async(lambda: sensors.cpu_temp(10), on_done=lambda r: setattr(self, "_ct", r))
+        ctemp, src = getattr(self, "_ct", (None, ""))
         vals = {
             "CPU (uso)": (psutil.cpu_percent(), "%"), "RAM (uso)": (psutil.virtual_memory().percent, "%"),
             "GPU (uso)": (g.get("util"), "%"), "GPU (temperatura)": (g.get("temp"), "°C"),

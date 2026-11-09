@@ -67,7 +67,20 @@ def ui_call(fn) -> None:
         _INVOKER.call.emit(fn)
 
 
-def run_async(fn, *args, on_done=None, on_error=None, on_progress=None, **kwargs):
+_STATUS_POOL: QThreadPool | None = None
+
+
+def status_pool() -> QThreadPool:
+    """Pool pequeno para leituras de estado (registro, powercfg, PowerShell): poucas ao mesmo tempo,
+    para não disputar CPU e o GIL com a interface."""
+    global _STATUS_POOL
+    if _STATUS_POOL is None:
+        _STATUS_POOL = QThreadPool()
+        _STATUS_POOL.setMaxThreadCount(2)
+    return _STATUS_POOL
+
+
+def run_async(fn, *args, on_done=None, on_error=None, on_progress=None, _pool=None, **kwargs):
     job = _Job(fn, args, kwargs)
     _JOBS.add(job.sig)
     if on_done:
@@ -78,7 +91,7 @@ def run_async(fn, *args, on_done=None, on_error=None, on_progress=None, **kwargs
         job.sig.progress.connect(on_progress)
     job.sig.done.connect(lambda *_: _JOBS.discard(job.sig))
     job.sig.error.connect(lambda *_: _JOBS.discard(job.sig))
-    QThreadPool.globalInstance().start(job)
+    (_pool or QThreadPool.globalInstance()).start(job)
     return job.sig
 
 

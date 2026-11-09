@@ -8,6 +8,7 @@ import sys
 def main() -> int:
     from lolitos.core.system import IS_WIN, data_dir, is_admin, relaunch_as_admin
 
+    sys.setswitchinterval(0.001)   # a thread da interface recupera o GIL mais rápido
     logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if IS_WIN and not is_admin() and "--no-admin" not in sys.argv:

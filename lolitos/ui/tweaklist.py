@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QLineEdit, QVBoxLayout, QWidget
 from lolitos.core import engine, history, restore, settings
 from lolitos.core.tweaks import ADVANCED
 from lolitos.ui.theme import C
-from lolitos.ui.widgets import TaskDialog, TweakRow, button, confirm, hrow, info, label, run_async
+from lolitos.ui.widgets import TaskDialog, TweakRow, button, confirm, hrow, info, label, run_async, status_pool
 
 
 def statuses(tweaks):
@@ -74,7 +74,7 @@ class TweakList(QWidget):
 
     # ---------------------------------------------------------------- estado
     def refresh(self):
-        run_async(statuses, self.tweaks, on_done=self._apply_states)
+        run_async(statuses, self.tweaks, on_done=self._apply_states, _pool=status_pool())
 
     def _apply_states(self, st: dict):
         blocked = history.blocked()

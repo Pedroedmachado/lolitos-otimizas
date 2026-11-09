@@ -127,31 +127,31 @@ class Overlay(QWidget):
         g = gpu.read()
         out = []
         for k in items:
-            v, col = "—", "#e7e9ee"
+            v, col = "—", "#f2f6fc"
             if k == "fps" and self.fps_reader:
                 f, low = self.fps_reader.stats()
                 if f:
                     v = f"{f:.0f}  (1% {low:.0f})"
-                    col = "#4cb782" if f >= 60 else "#e3b23c" if f >= 40 else "#e0584c"
+                    col = "#4ade80" if f >= 60 else "#f5b82e" if f >= 40 else "#ff4d5e"
             elif k == "fps":
                 v = "PresentMon?"
             elif k == "cpu":
                 v = f"{psutil.cpu_percent():.0f}%"
             elif k == "cpu_temp" and self.cpu_t:
                 v = f"{self.cpu_t:.0f} °C"
-                col = "#e0584c" if self.cpu_t > 88 else "#e7e9ee"
+                col = "#ff4d5e" if self.cpu_t > 88 else "#f2f6fc"
             elif k == "gpu" and g.get("util") is not None:
                 v = f"{g['util']}%"
             elif k == "gpu_temp" and g.get("temp") is not None:
                 v = f"{g['temp']} °C"
-                col = "#e0584c" if g["temp"] > 83 else "#e7e9ee"
+                col = "#ff4d5e" if g["temp"] > 83 else "#f2f6fc"
             elif k == "vram" and g.get("vram_used"):
                 v = f"{g['vram_used'] / 1024**3:.1f} / {g['vram_total'] / 1024**3:.0f} GB"
             elif k == "ram":
                 v = f"{psutil.virtual_memory().percent:.0f}%"
             elif k == "ping" and self.ping:
                 v = f"{self.ping:.0f} ms"
-                col = "#4cb782" if self.ping < 60 else "#e3b23c" if self.ping < 120 else "#e0584c"
+                col = "#4ade80" if self.ping < 60 else "#f5b82e" if self.ping < 120 else "#ff4d5e"
             out.append((LABELS[k], v, col))
         self.lines = out
         self.place()
@@ -160,7 +160,7 @@ class Overlay(QWidget):
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        bg = QColor(10, 12, 16)
+        bg = QColor(5, 11, 22)
         bg.setAlphaF(float(settings.get("overlay_opacity")))
         p.setBrush(bg)
         p.setPen(Qt.NoPen)
@@ -168,7 +168,7 @@ class Overlay(QWidget):
         p.setFont(QFont("Segoe UI", 10, QFont.Bold))
         y = 24
         for name, v, col in self.lines:
-            p.setPen(QColor("#e2a740"))
+            p.setPen(QColor("#5cc8ff"))
             p.drawText(10, y, name)
             p.setPen(QColor(col))
             p.drawText(84, y, v)
@@ -200,3 +200,46 @@ def parse_hotkey(text: str) -> tuple[int, int] | None:
     else:
         return None
     return mods | 0x4000, vk   # MOD_NOREPEAT
+
+
+class HotkeyThread:
+    """RegisterHotKey numa thread com fila de mensagens própria.
+
+    Evita sobrescrever nativeEvent da janela: isso faria o Python processar TODA mensagem do Windows
+    (mouse, pintura...) e travaria a interface quando há trabalho em segundo plano."""
+
+    WM_HOTKEY, WM_QUIT = 0x0312, 0x0012
+
+    def __init__(self, mods: int, vk: int, callback):
+        import threading
+        self.mods, self.vk, self.callback = mods, vk, callback
+        self.ok = False
+        self.tid = 0
+        self._ready = threading.Event()
+        self._t = threading.Thread(target=self._run, daemon=True)
+
+    def start(self, timeout: float = 1.0) -> bool:
+        self._t.start()
+        self._ready.wait(timeout)
+        return self.ok
+
+    def _run(self):
+        from ctypes import wintypes
+        u, k = ctypes.windll.user32, ctypes.windll.kernel32
+        self.tid = k.GetCurrentThreadId()
+        self.ok = bool(u.RegisterHotKey(None, 1, self.mods, self.vk))
+        self._ready.set()
+        if not self.ok:
+            return
+        msg = wintypes.MSG()
+        while u.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            if msg.message == self.WM_HOTKEY:
+                try:
+                    self.callback()
+                except Exception:  # noqa: BLE001
+                    pass
+        u.UnregisterHotKey(None, 1)
+
+    def stop(self):
+        if self.tid:
+            ctypes.windll.user32.PostThreadMessageW(self.tid, self.WM_QUIT, 0, 0)

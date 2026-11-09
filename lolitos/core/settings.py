@@ -29,13 +29,24 @@ def _file():
     return data_dir() / "config.json"
 
 
+_CACHE: dict = {"mtime": None, "data": {}}
+
+
 def load() -> dict:
+    """Lê o config.json só quando ele muda no disco (é consultado o tempo todo pela interface)."""
     with _LOCK:
+        f = _file()
         try:
-            d = json.loads(_file().read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            d = {}
-        return {**DEFAULTS, **d}
+            mt = f.stat().st_mtime_ns
+        except OSError:
+            mt = -1
+        if mt != _CACHE["mtime"]:
+            try:
+                d = json.loads(f.read_text(encoding="utf-8")) if mt != -1 else {}
+            except (OSError, json.JSONDecodeError):
+                d = {}
+            _CACHE.update(mtime=mt, data=d)
+        return {**DEFAULTS, **_CACHE["data"]}
 
 
 def get(key: str, default=None):
@@ -44,6 +55,12 @@ def get(key: str, default=None):
 
 def set(key: str, value) -> None:  # noqa: A001
     with _LOCK:
-        d = load()
-        d[key] = value
-        _file().write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+        load()
+        data = dict(_CACHE["data"])
+        data[key] = value
+        f = _file()
+        f.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        try:
+            _CACHE.update(mtime=f.stat().st_mtime_ns, data=data)
+        except OSError:
+            _CACHE.update(mtime=None, data=data)

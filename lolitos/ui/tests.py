@@ -14,7 +14,7 @@ class _Pad(QFrame):
         super().__init__()
         self.setMouseTracking(True)
         self.setMinimumSize(520, 320)
-        self.setStyleSheet("background:#11141a; border:1px dashed #3a4150; border-radius:10px;")
+        self.setStyleSheet("background:#0a1526; border:1px dashed #1d3d6b; border-radius:10px;")
         self.on_move = on_move
 
     def mouseMoveEvent(self, e):

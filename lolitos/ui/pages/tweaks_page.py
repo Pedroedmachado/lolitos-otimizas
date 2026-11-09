@@ -1,4 +1,4 @@
-"""Ajustes do sistema separados por categoria."""
+"""Ajustes do sistema separados por categoria (cada aba é montada só quando aberta)."""
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from lolitos.core.tweaks import CATS, by_cat
@@ -17,19 +17,29 @@ class TweaksPage(Page):
 
     def build(self):
         self.tabs = QTabWidget()
-        self.lists = {}
+        self.lists: dict[str, TweakList] = {}
+        self.holders: dict[str, QVBoxLayout] = {}
         for cat in TABS:
             w = QWidget()
             lay = QVBoxLayout(w)
             lay.setContentsMargins(0, 12, 0, 0)
-            tl = TweakList(by_cat(cat), self)
-            self.lists[cat] = tl
-            lay.addWidget(tl)
-            lay.addStretch()
+            self.holders[cat] = lay
             self.tabs.addTab(w, CATS[cat])
+        self.tabs.currentChanged.connect(self._ensure)
         self.body.addWidget(self.tabs)
+        self._ensure(0)
+
+    def _ensure(self, idx: int):
+        cat = TABS[idx]
+        if cat in self.lists:
+            return
+        tl = TweakList(by_cat(cat), self)
+        self.lists[cat] = tl
+        self.holders[cat].addWidget(tl)
+        self.holders[cat].addStretch()
 
     def on_show(self):
         if self._built:
             cur = TABS[self.tabs.currentIndex()]
-            self.lists[cur].refresh()
+            if cur in self.lists:
+                self.lists[cur].refresh()

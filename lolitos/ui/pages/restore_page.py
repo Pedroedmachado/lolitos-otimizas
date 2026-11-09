@@ -52,7 +52,7 @@ class RestorePage(Page):
         items = list(reversed(history.load()))
         if not items:
             self.box.addWidget(label("Nada no histórico ainda.", "muted"))
-        for e in items[:300]:
+        for e in items[:150]:
             c = Card()
             row = QHBoxLayout()
             when = time.strftime("%d/%m %H:%M", time.localtime(e["time"]))

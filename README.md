@@ -1,7 +1,7 @@
 # Lolitos Otimizações
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.3.0.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.3.1.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosOtimizacoes-1.3.0-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosOtimizacoes-1.3.1-Setup.exe`.
 O instalador tem assistente em português, termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -35,6 +35,14 @@ Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosOtimi
 | **Hardware** | CPU, RAM (XMP/EXPO, dual channel, slots), placa-mãe/BIOS, GPU (link PCIe via NVML), monitores, discos, TPM/Secure Boot; monitor ao vivo com gravação em CSV |
 | **Overlay** | FPS (via PresentMon), CPU/GPU, temperaturas, VRAM, RAM e ping por cima do jogo; tecla global |
 | **Restauração** | Histórico com desfazer item a item, reverter tudo, pontos de restauração |
+
+## Novidades da 1.3.1
+
+* **Fim das travadas ao trocar de tela**: a tecla global do overlay roda numa thread própria (antes cada mensagem
+  do Windows passava pelo Python e a janela congelava), as verificações de estado rodam no máximo 2 por vez,
+  as abas de Ajustes são montadas só quando abertas e a temperatura da CPU não é mais lida na thread da interface.
+* **Barra de rolagem** estilizada por completo, sem rastros ao rolar.
+* **Novo visual azul-escuro**, ícone e instalador incluídos.
 
 ## Novidades da 1.3.0 — análise do PC
 
