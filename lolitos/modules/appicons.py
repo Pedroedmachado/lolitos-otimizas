@@ -1,5 +1,5 @@
 """Ícones dos programas do catálogo: o ícone do site oficial de cada um (serviço de favicons do Google),
-guardado em %LOCALAPPDATA%\\LolitosControl\\icons. Sem ícone, a tela desenha a inicial."""
+guardado em %LOCALAPPDATA%\\ChineseControl\\icons. Sem ícone, a tela desenha a inicial."""
 from __future__ import annotations
 
 import re
@@ -42,7 +42,7 @@ def fetch(wid: str, link: str) -> Path | None:
     if not host or host in GENERIC:
         miss.touch()
         return None
-    req = urllib.request.Request(SERVICE.format(host=host), headers={"User-Agent": "LolitosControl"})
+    req = urllib.request.Request(SERVICE.format(host=host), headers={"User-Agent": "ChineseControl"})
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
             data = r.read(512 * 1024)

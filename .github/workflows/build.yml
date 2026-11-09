@@ -38,8 +38,8 @@ jobs:
       - name: Programa (.exe)
         run: >
           pyinstaller --noconfirm --clean --windowed --uac-admin
-          --name LolitosControl
-          --icon build\lolitos.ico
+          --name ChineseControl
+          --icon build\app.ico
           --add-data "lolitos\data;lolitos\data"
           --distpath dist --workpath build\pyi
           run_lolitos.pyw
@@ -69,17 +69,24 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: LolitosControl-${{ steps.ver.outputs.version }}-Setup
-          path: dist/LolitosControl-*-Setup.exe
+          name: ChineseControl-${{ steps.ver.outputs.version }}-Setup
+          path: dist/ChineseControl-*-Setup.exe
+
+      - name: Cópia com o nome antigo (para as versões Lolitos Control se atualizarem sozinhas)
+        shell: pwsh
+        run: Copy-Item "dist\ChineseControl-${{ steps.ver.outputs.version }}-Setup.exe" "dist\LolitosControl-${{ steps.ver.outputs.version }}-Setup.exe"
 
       - name: Publicar na aba Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}
-          name: Lolitos Control ${{ steps.ver.outputs.version }}
+          name: Chinese Control ${{ steps.ver.outputs.version }}
           body: |
-            Instalador do Lolitos Control ${{ steps.ver.outputs.version }}.
-            Baixe o **LolitosControl-${{ steps.ver.outputs.version }}-Setup.exe** abaixo e execute.
+            Instalador do Chinese Control ${{ steps.ver.outputs.version }}.
+            Baixe o **ChineseControl-${{ steps.ver.outputs.version }}-Setup.exe** abaixo e execute.
+            (O LolitosControl-…-Setup.exe é o mesmo arquivo com o nome antigo, para a atualização automática das versões anteriores.)
             Gerado automaticamente pelo GitHub Actions a partir do código deste repositório.
-          files: dist/LolitosControl-*-Setup.exe
+          files: |
+            dist/ChineseControl-*-Setup.exe
+            dist/LolitosControl-*-Setup.exe
           make_latest: true

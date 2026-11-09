@@ -11,7 +11,7 @@ from lolitos.ui.icon import pixmap  # noqa: E402
 
 out = Path(__file__).resolve().parents[1] / "build"
 out.mkdir(exist_ok=True)
-pixmap(256).save(str(out / "lolitos.png"), "PNG")
+pixmap(256).save(str(out / "app.png"), "PNG")
 # .ico com todos os tamanhos desenhados de verdade (16 a 256) — o Windows não precisa reduzir/borrar
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 try:
@@ -22,11 +22,11 @@ try:
         pixmap(s).save(str(f), "PNG")
         tmp.append(f)
     imgs = [Image.open(f).convert("RGBA") for f in tmp]
-    imgs[-1].save(out / "lolitos.ico", format="ICO", sizes=[(s, s) for s in SIZES], append_images=imgs[:-1])
+    imgs[-1].save(out / "app.ico", format="ICO", sizes=[(s, s) for s in SIZES], append_images=imgs[:-1])
     for f in tmp:
         f.unlink()
 except ImportError:   # sem Pillow: ícone de um tamanho só (o Windows reduz)
-    pixmap(256).save(str(out / "lolitos.ico"), "ICO")
+    pixmap(256).save(str(out / "app.ico"), "ICO")
 
 
 def banner(w, h, path, scale=1):
@@ -45,7 +45,7 @@ def banner(w, h, path, scale=1):
     f.setPixelSize(22 * scale)
     p.setFont(f)
     p.setPen(QColor("#5cc8ff"))
-    p.drawText(QRect(0, int(img.height() * 0.58), img.width(), 30 * scale), Qt.AlignCenter, "Lolitos")
+    p.drawText(QRect(0, int(img.height() * 0.58), img.width(), 30 * scale), Qt.AlignCenter, "Chinese")
     f2 = QFont("Segoe UI")
     f2.setPixelSize(12 * scale)
     p.setFont(f2)

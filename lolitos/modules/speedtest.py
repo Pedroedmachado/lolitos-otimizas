@@ -8,7 +8,7 @@ import time
 import urllib.request
 
 BASE = "https://speed.cloudflare.com"
-UA = {"User-Agent": "LolitosControl/1.0"}
+UA = {"User-Agent": "ChineseControl/1.0"}
 
 
 def _get(url: str, timeout=15):

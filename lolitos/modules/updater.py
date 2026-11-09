@@ -22,7 +22,8 @@ from lolitos.core.system import IS_WIN
 REPO = "Pedroedmachado/lolitos-otimizas"
 API = f"https://api.github.com/repos/{REPO}/releases/latest"
 RELEASES_PAGE = f"https://github.com/{REPO}/releases"
-ASSET_RE = re.compile(r"^LolitosControl-(\d+\.\d+\.\d+)-Setup\.exe$")
+# "LolitosControl-…" é o nome antigo: continua publicado junto para as versões antigas acharem a atualização
+ASSET_RE = re.compile(r"^(?:Chinese|Lolitos)Control-(\d+\.\d+\.\d+)-Setup\.exe$")
 ALLOWED_HOSTS = ("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 UA = {"User-Agent": f"{APP_ID}/{VERSION}", "Accept": "application/vnd.github+json"}
 MAX_SIZE = 300 * 1024 * 1024

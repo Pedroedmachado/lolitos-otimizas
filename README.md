@@ -1,7 +1,7 @@
-# Lolitos Control
+# Chinese Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.7.3. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.8.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,11 +13,11 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.7.3-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-1.8.0-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
-Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosControl`.
+Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\ChineseControl`.
 
 ## O que tem
 
@@ -47,6 +47,15 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 1.8.0
+
+* Novo nome: **Chinese Control** (antes Lolitos Control) e novo logo: um **C** azul com um ponto aceso na abertura.
+  Quem já usa recebe pela atualização normal: o instalador troca o executável e os atalhos, e o app traz o
+  histórico, os backups, as configurações, a tarefa de iniciar com o Windows e o plano de energia do nome antigo.
+* **Black Desert:** perfil do BDO no Painel de Controle NVIDIA, gravado direto no driver pela NVAPI (taxa de
+  atualização mais alta, otimização encadeada, Ansel desligado, correção de gama, G-SYNC desligado no jogo), com
+  desfazer e importação de arquivos `.nip` do NVIDIA Profile Inspector.
 
 ## Novidades da 1.7.3
 

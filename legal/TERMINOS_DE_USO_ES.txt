@@ -1,6 +1,6 @@
-﻿LOLITOS CONTROL — TÉRMINOS DE USO
+﻿CHINESE CONTROL — TÉRMINOS DE USO
 
-1. Lolitos Control cambia configuraciones de Windows (registro, servicios, tareas
+1. Chinese Control cambia configuraciones de Windows (registro, servicios, tareas
    programadas, plan de energía) y el archivo de opciones de Black Desert Online
    (GameOption.txt) solo cuando tú lo indicas.
 

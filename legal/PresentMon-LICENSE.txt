@@ -1,4 +1,4 @@
-Intel PresentMon 2.6.0 (https://github.com/GameTechDev/PresentMon), incluído no Lolitos Control para medir o FPS.
+Intel PresentMon 2.6.0 (https://github.com/GameTechDev/PresentMon), incluído no Chinese Control para medir o FPS.
 
 Copyright (C) 2017-2024 Intel Corporation
 

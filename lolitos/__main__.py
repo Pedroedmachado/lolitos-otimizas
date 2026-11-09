@@ -27,7 +27,7 @@ def main() -> int:
 
     if IS_WIN:
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Lolitos.Control")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Chinese.Control")
 
     from lolitos import i18n
     i18n.load()
@@ -43,8 +43,17 @@ def main() -> int:
     from lolitos.ui.main_window import MainWindow
 
     if IS_WIN and is_admin():
-        from lolitos.modules.startup import migrate_old_autostart
-        migrate_old_autostart()
+        import threading
+
+        def migrate():   # nomes antigos do app: tarefa de inicialização e plano de energia
+            from lolitos.core.actions import rename_legacy_power_plans
+            from lolitos.modules.startup import migrate_old_autostart
+            for fn in (migrate_old_autostart, rename_legacy_power_plans):
+                try:
+                    fn()
+                except Exception:  # noqa: BLE001
+                    logging.getLogger("lolitos").exception("migração %s", fn.__name__)
+        threading.Thread(target=migrate, daemon=True).start()
     theme.use(settings.get("theme"))
     app.setStyleSheet(theme.qss())
     w = MainWindow()

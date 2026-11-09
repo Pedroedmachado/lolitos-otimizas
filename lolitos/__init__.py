@@ -1,7 +1,10 @@
-"""Lolitos Control — otimizador de Windows para jogos (com módulo especial para Black Desert Online)."""
+"""Chinese Control — otimizador de Windows para jogos (com módulo especial para Black Desert Online)."""
 
-APP_NAME = "Lolitos Control"
-APP_ID = "LolitosControl"              # nome de pasta/arquivos (sem acento)
-OLD_APP_ID = "LolitosOtimizacoes"      # nome usado até a 1.3.x (migração)
-VERSION = "1.7.4"
-POWER_PLAN_NAME = "Lolitos Desempenho"
+APP_NAME = "Chinese Control"
+APP_ID = "ChineseControl"              # nome de pasta/arquivos/tarefa (sem espaço)
+# nomes antigos, do mais novo ao mais velho: Lolitos Control (1.4–1.7) e Lolitos Otimizações (até 1.3)
+LEGACY_APP_IDS = ("LolitosControl", "LolitosOtimizacoes")
+LEGACY_EXES = ("LolitosControl.exe", "LolitosOtimizacoes.exe")
+VERSION = "1.8.0"
+POWER_PLAN_NAME = "Chinese Control Desempenho"
+LEGACY_POWER_PLAN_NAMES = ("Lolitos Desempenho",)

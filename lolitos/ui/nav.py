@@ -116,7 +116,7 @@ class Flag(QWidget):
 
 
 class Brand(QWidget):
-    """Logo L + 'LOLITOS / CONTROL' + pílula da versão."""
+    """Logo C + 'CHINESE / CONTROL' + pílula da versão."""
 
     def __init__(self):
         super().__init__()
@@ -129,7 +129,7 @@ class Brand(QWidget):
         lay.addWidget(self.logo)
         col = QVBoxLayout()
         col.setSpacing(0)
-        t1 = QLabel("LOLITOS")
+        t1 = QLabel("CHINESE")
         t1.setObjectName("brand1")
         t2 = QLabel("C O N T R O L")
         t2.setObjectName("brand2")

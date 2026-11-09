@@ -669,7 +669,7 @@ class CheckupPage(Page):
         return "\n".join(lines)
 
     def _export(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar relatório", "Meu PC - Lolitos Control.txt",
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar relatório", "Meu PC - Chinese Control.txt",
                                               "Texto (*.txt)")
         if path:
             with open(path, "w", encoding="utf-8") as f:

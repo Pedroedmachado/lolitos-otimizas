@@ -69,7 +69,7 @@ PRESETS = [
 PRESETS_BY_ID = {p.id: p for p in PRESETS}
 
 BASIC_PACK = Preset(
-    "basico", "Pacote Lolitos Básico",
+    "basico", "Pacote Básico",
     "Windows leve sem telemetria nem IA, mouse e teclado sem atraso, plano de energia próprio e prioridade para jogos.",
     lambda: _ids(lambda t: t.level == ESSENTIAL and t.reversible and t.recommended_here()))
 
@@ -108,7 +108,7 @@ def export_profile(name: str, ids: list[str], path: str) -> None:
 def import_profile(path: str) -> tuple[str, int, int]:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(d, dict) or d.get("lolitos_profile") != 1:
-        raise ValueError("Este arquivo não é um perfil do Lolitos Control.")
+        raise ValueError("Este arquivo não é um perfil do Chinese Control.")
     ids = [i for i in d.get("ids", []) if isinstance(i, str)]
     known = [i for i in ids if i in CATALOG]
     upsert_profile(str(d.get("name") or "Perfil importado")[:60], known)

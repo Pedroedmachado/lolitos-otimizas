@@ -90,11 +90,15 @@ def self_autostart(enable: bool) -> None:
 
 
 def migrate_old_autostart() -> None:
-    """Tarefa de inicialização da 1.3.x (nome antigo) → recria com o nome e o executável novos."""
-    from lolitos import OLD_APP_ID
+    """Tarefa de inicialização com um nome antigo do app → recria com o nome e o executável novos."""
+    from lolitos import LEGACY_APP_IDS
     from lolitos.core.system import run
-    if run(["schtasks", "/Query", "/TN", OLD_APP_ID]).ok:
-        run(["schtasks", "/Delete", "/F", "/TN", OLD_APP_ID])
+    found = False
+    for old_id in LEGACY_APP_IDS:
+        if run(["schtasks", "/Query", "/TN", old_id]).ok:
+            run(["schtasks", "/Delete", "/F", "/TN", old_id])
+            found = True
+    if found:
         self_autostart(True)
 
 

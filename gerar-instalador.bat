@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
-title Lolitos Control - gerando o instalador
+title Chinese Control - gerando o instalador
 rem =====================================================================
-rem  Gera dist\LolitosControl-1.7.4-Setup.exe com dois cliques.
+rem  Gera dist\ChineseControl-1.8.0-Setup.exe com dois cliques.
 rem  Instala sozinho (pelo winget) o que faltar: Python 3.12 e Inno Setup 6.
 rem =====================================================================
 setlocal EnableDelayedExpansion
@@ -59,8 +59,8 @@ echo.
 echo  [4/5] Gerando o programa (.exe)...
 .venv\Scripts\python.exe tools\make_icon.py || goto :erro
 .venv\Scripts\pyinstaller.exe --noconfirm --clean --windowed --uac-admin ^
-  --name LolitosControl ^
-  --icon build\lolitos.ico ^
+  --name ChineseControl ^
+  --icon build\app.ico ^
   --add-data "lolitos\data;lolitos\data" ^
   --distpath dist --workpath build\pyi ^
   run_lolitos.pyw || goto :erro
@@ -72,9 +72,9 @@ echo  [5/5] Montando o instalador...
 
 echo.
 echo  =====================================================================
-echo   PRONTO:  dist\LolitosControl-1.7.4-Setup.exe
+echo   PRONTO:  dist\ChineseControl-1.8.0-Setup.exe
 echo  =====================================================================
-explorer /select,"%~dp0dist\LolitosControl-1.7.4-Setup.exe"
+explorer /select,"%~dp0dist\ChineseControl-1.8.0-Setup.exe"
 pause
 exit /b 0
 

@@ -148,7 +148,7 @@ class MainWindow(QMainWindow):
         self.update_btn = QPushButton("⟳  Procurar atualização")
         self.update_btn.setObjectName("update")
         self.update_btn.setCursor(Qt.PointingHandCursor)
-        self.update_btn.setToolTip("Confere no GitHub se há versão nova do Lolitos Control")
+        self.update_btn.setToolTip("Confere no GitHub se há versão nova do Chinese Control")
         self.update_btn.clicked.connect(lambda: self.check_update(manual=True))
         sl.addWidget(self.update_btn)
         lay.addWidget(side)
@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
                        "download?", yes="Abrir página"):
                 webbrowser.open(inf["page"])
             return
-        if not confirm(self, "Atualizar o Lolitos Control",
+        if not confirm(self, "Atualizar o Chinese Control",
                        f"<p>Versão <b>{inf['version']}</b> disponível (você tem a {VERSION}).</p>"
                        + (f"<p>{notes}</p>" if notes else "")
                        + "<p>O instalador é baixado do GitHub, conferido e executado sem janelas. O app fecha e "
@@ -305,7 +305,7 @@ class MainWindow(QMainWindow):
             updater.install_and_restart(Path(path))
             self.quit()
 
-        dlg = TaskDialog(self, "Atualizando o Lolitos Control", work, on_done=done)
+        dlg = TaskDialog(self, "Atualizando o Chinese Control", work, on_done=done)
         dlg.exec()
         if dlg.result_value is None:
             info(self, "Atualização", "A atualização não foi concluída. Tente de novo mais tarde.")
@@ -324,7 +324,7 @@ class MainWindow(QMainWindow):
             html += "".join(f"<p><b>{t}</b><br>{txt}</p>" for t, txt in adv)
             html += ("<p>Aplicar agora os ajustes recomendados para este PC? Um ponto de restauração é criado antes "
                      "e tudo pode ser desfeito em Restauração.</p>")
-            if confirm(self, "Bem-vindo ao Lolitos Control", html, yes="Aplicar o recomendado",
+            if confirm(self, "Bem-vindo ao Chinese Control", html, yes="Aplicar o recomendado",
                        no="Agora não"):
                 TaskDialog(self, "Otimizando para este PC", boost,
                            on_done=lambda _: self.changed()).exec()

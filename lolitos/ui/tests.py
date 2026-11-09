@@ -110,7 +110,7 @@ class MonitorTest(QWidget):
 
     def __init__(self, mode="motion", speed=960, obj=0, bg=0, col=0, count=1, bands=True, text=""):
         super().__init__()
-        self.setWindowTitle(tr("Lolitos Control — Teste de monitor"))
+        self.setWindowTitle(tr("Chinese Control — Teste de monitor"))
         self.mode = mode
         self.i = 0
         self.x = 0.0

@@ -145,6 +145,7 @@ def test_updater_rules():
     assert u.parse_version("v1.10.0") > u.parse_version("1.9.9")
     assert u.parse_version("1.5") == (1, 5, 0)
     assert u.ASSET_RE.match("LolitosControl-1.5.0-Setup.exe")
+    assert u.ASSET_RE.match("ChineseControl-1.8.0-Setup.exe").group(1) == "1.8.0"
     assert not u.ASSET_RE.match("LolitosControl-1.5.0-Setup.exe.zip")
     assert u._host_ok("https://github.com/x/y/releases/download/v1/a.exe")
     assert u._host_ok("https://objects.githubusercontent.com/abc")

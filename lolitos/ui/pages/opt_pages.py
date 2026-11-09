@@ -138,13 +138,13 @@ class GpuPage(_TweakPage):
 # ===================================================================== Defender e IA
 class DefenderAiPage(Page):
     title = "Defender e IA"
-    subtitle = "Libere o Lolitos Control no seu antivírus para nenhum ajuste ser bloqueado e remova a IA do Windows."
+    subtitle = "Libere o Chinese Control no seu antivírus para nenhum ajuste ser bloqueado e remova a IA do Windows."
 
     def build(self):
         import sys
 
         from lolitos.ui.widgets import card_header, pill
-        self.body.addWidget(label("Liberar o Lolitos Control no antivírus", "h2"))
+        self.body.addWidget(label("Liberar o Chinese Control no antivírus", "h2"))
         self.body.addWidget(label("Funciona com qualquer antivírus registrado no Windows (Defender, Kaspersky, AVG, "
                                   "Avast, Norton, ESET, Bitdefender, McAfee…). O app nunca desliga nem contorna a "
                                   "proteção: só marca a si mesmo como confiável.", "muted"))
@@ -209,9 +209,9 @@ class DefenderAiPage(Page):
         else:
             self.def_state.setText("NÃO É O ANTIVÍRUS ATIVO")
         if has:
-            self.def_txt.setText(f"<span style='color:{C['ok']}'>O Defender já confia no Lolitos Control.</span>")
+            self.def_txt.setText(f"<span style='color:{C['ok']}'>O Defender já confia no Chinese Control.</span>")
         elif d and d["realtime"]:
-            self.def_txt.setText("O Defender ainda verifica o Lolitos Control em tempo real e pode bloquear ajustes.")
+            self.def_txt.setText("O Defender ainda verifica o Chinese Control em tempo real e pode bloquear ajustes.")
         else:
             self.def_txt.setText("O Defender não está protegendo em tempo real; veja o seu antivírus abaixo.")
         self.def_add.setVisible(not has)

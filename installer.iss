@@ -1,11 +1,15 @@
-﻿; Instalador do Lolitos Control (Inno Setup 6).
+﻿; Instalador do Chinese Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
-#define AppName "Lolitos Control"
-#define AppVersion "1.7.4"
-#define AppExe "LolitosControl.exe"
+#define AppName "Chinese Control"
+#define AppVersion "1.8.0"
+#define AppExe "ChineseControl.exe"
+#define AppId "ChineseControl"
+; nomes antigos do app (até a 1.7.x: Lolitos Control; até a 1.3.x: Lolitos Otimizações)
+#define PrevExe "LolitosControl.exe"
+#define PrevName "Lolitos Control"
+#define PrevAppId "LolitosControl"
 #define OldExe "LolitosOtimizacoes.exe"
 #define OldName "Lolitos Otimizações"
-#define AppId "LolitosControl"
 #define OldAppId "LolitosOtimizacoes"
 
 [Setup]
@@ -13,18 +17,19 @@ AppId={{6B1F3C2E-4A5D-4E7B-9C1A-1F0B0D5E9A77}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher=Lolitos
+AppPublisher=Chinese Control
 VersionInfoVersion={#AppVersion}
 VersionInfoDescription={#AppName} - instalador
-DefaultDirName={autopf}\Lolitos Control
+DefaultDirName={autopf}\Chinese Control
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
+UsePreviousGroup=no
 DisableDirPage=auto
 ShowLanguageDialog=auto
 UsePreviousLanguage=yes
 OutputDir=dist
-OutputBaseFilename=LolitosControl-{#AppVersion}-Setup
-SetupIconFile=build\lolitos.ico
+OutputBaseFilename=ChineseControl-{#AppVersion}-Setup
+SetupIconFile=build\app.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 WizardImageFile=build\wizard.bmp,build\wizard@2x.bmp
@@ -74,13 +79,16 @@ Name: "desktopicon"; Description: "{cm:DesktopIcon}"
 Name: "autostart"; Description: "{cm:AutoStart}"; Flags: unchecked
 
 [Files]
-Source: "dist\LolitosControl\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "dist\ChineseControl\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "legal\*.txt"; DestDir: "{app}\legal"; Flags: ignoreversion
 ; PresentMon (Intel, MIT) para o FPS do overlay — baixado e conferido por tools\get_presentmon.py
 Source: "vendor\PresentMon.exe"; DestDir: "{app}\tools"; Flags: ignoreversion skipifsourcedoesntexist
 
 [InstallDelete]
-; restos da versão com o nome antigo (Lolitos Otimizações, até a 1.3.x)
+; restos das versões com os nomes antigos
+Type: files; Name: "{app}\{#PrevExe}"
+Type: files; Name: "{autodesktop}\{#PrevName}.lnk"
+Type: filesandordirs; Name: "{autoprograms}\{#PrevName}"
 Type: files; Name: "{app}\{#OldExe}"
 Type: files; Name: "{autodesktop}\{#OldName}.lnk"
 Type: filesandordirs; Name: "{autoprograms}\{#OldName}"
@@ -99,6 +107,7 @@ Filename: "{app}\{#AppExe}"; Flags: nowait shellexec; Check: ShouldRelaunch
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM {#AppExe}"; Flags: runhidden; RunOnceId: "KillApp"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#PrevAppId}"; Flags: runhidden; RunOnceId: "DelPrevTask"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#OldAppId}"; Flags: runhidden; RunOnceId: "DelOldTask"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN {#AppId}"; Flags: runhidden; RunOnceId: "DelTask"
 
@@ -114,6 +123,7 @@ var
 begin
   { fecha o app (inclusive na bandeja) antes de copiar os arquivos }
   Exec('taskkill.exe', '/F /IM {#AppExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Exec('taskkill.exe', '/F /IM {#PrevExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Exec('taskkill.exe', '/F /IM {#OldExe}', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Result := '';
 end;
@@ -129,5 +139,8 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
     if MsgBox(CustomMessage('DeleteData'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    begin
       DelTree(ExpandConstant('{localappdata}\{#AppId}'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\{#PrevAppId}'), True, True, True);
+    end;
 end;

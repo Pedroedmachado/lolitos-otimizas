@@ -11,7 +11,7 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-from lolitos import APP_ID, OLD_APP_ID
+from lolitos import APP_ID, LEGACY_APP_IDS
 
 IS_WIN = sys.platform == "win32"
 CREATE_NO_WINDOW = 0x08000000
@@ -19,15 +19,17 @@ CREATE_NO_WINDOW = 0x08000000
 
 # ----------------------------------------------------------------- caminhos
 def migrate_old_data() -> None:
-    """Até a 1.3.x o app se chamava Lolitos Otimizações: traz histórico, backups e config para a pasta nova."""
+    """O app já teve outros nomes: traz histórico, backups e config da pasta antiga para a pasta nova."""
     base = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".local" / "share")
-    old, new = Path(base) / OLD_APP_ID, Path(base) / APP_ID
-    if old.exists() and not new.exists():
-        try:
-            old.rename(new)
-        except OSError:
-            import shutil
-            shutil.copytree(old, new, dirs_exist_ok=True)
+    new = Path(base) / APP_ID
+    for old_id in LEGACY_APP_IDS:
+        old = Path(base) / old_id
+        if old.exists() and not new.exists():
+            try:
+                old.rename(new)
+            except OSError:
+                import shutil
+                shutil.copytree(old, new, dirs_exist_ok=True)
 
 
 def data_dir() -> Path:

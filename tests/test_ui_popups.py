@@ -1,4 +1,4 @@
-"""Nenhuma tela pode mostrar um widget sem pai (no Windows isso vira uma janelinha 'Lolitos Control' piscando)."""
+"""Nenhuma tela pode mostrar um widget sem pai (no Windows isso vira uma janelinha 'Chinese Control' piscando)."""
 import os
 
 import pytest

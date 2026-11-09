@@ -9,7 +9,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QConicalGradient, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
 
-from lolitos.ui.icon import l_path
+from lolitos.ui.icon import mark_path
 from lolitos.ui.theme import C
 
 
@@ -177,7 +177,7 @@ class LineChart(QWidget):
 
 
 class CircuitArt(QWidget):
-    """Arte do cabeçalho: trilhas de circuito saindo de um chip com o L do app (desenho próprio)."""
+    """Arte do cabeçalho: trilhas de circuito saindo de um chip com o C do app (desenho próprio)."""
 
     def __init__(self):
         super().__init__()
@@ -238,4 +238,4 @@ class CircuitArt(QWidget):
         lg = QLinearGradient(0, 0, s, s)
         lg.setColorAt(0, QColor("#5cc8ff"))
         lg.setColorAt(1, QColor("#0a6cff"))
-        p.fillPath(l_path(s), lg)
+        p.fillPath(mark_path(s), lg)

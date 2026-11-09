@@ -190,4 +190,4 @@ class FreshPage(Page):
         if confirm(self, "Formatação", "Pronto. Vários ajustes só valem depois de reiniciar. Reiniciar o PC agora?",
                    yes="Reiniciar agora", no="Depois"):
             from lolitos.core.system import run
-            run(["shutdown", "/r", "/t", "5", "/c", "Lolitos Control: reiniciando para concluir os ajustes."])
+            run(["shutdown", "/r", "/t", "5", "/c", "Chinese Control: reiniciando para concluir os ajustes."])

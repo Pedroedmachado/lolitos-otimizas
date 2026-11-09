@@ -50,7 +50,7 @@ def download_presentmon(dst: Path | None = None, progress=None) -> Path:
     dst = dst or (data_dir() / "tools" / "PresentMon.exe")
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(".part")
-    req = urllib.request.Request(PM_URL, headers={"User-Agent": "LolitosControl"})
+    req = urllib.request.Request(PM_URL, headers={"User-Agent": "ChineseControl"})
     h = hashlib.sha256()
     with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
         while True:
@@ -102,8 +102,8 @@ class FpsReader(threading.Thread):
             self.error = "PresentMon não encontrado"
             return
         args = [str(exe), "--output_stdout", "--no_console_stats", "--stop_existing_session",
-                "--session_name", "LolitosFPS", "--no_track_gpu", "--no_track_display", "--no_track_input"]
-        for name in ("dwm.exe", "explorer.exe", "LolitosControl.exe"):
+                "--session_name", "ChineseControlFPS", "--no_track_gpu", "--no_track_display", "--no_track_input"]
+        for name in ("dwm.exe", "explorer.exe", "ChineseControl.exe", "LolitosControl.exe"):
             args += ["--exclude", name]
         log = data_dir() / "tools" / "presentmon.log"
         try:

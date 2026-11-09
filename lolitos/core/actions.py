@@ -336,6 +336,18 @@ def find_scheme_by_name(name: str) -> str | None:
     return None
 
 
+def rename_legacy_power_plans() -> None:
+    """O plano criado com um nome antigo do app passa a usar o nome novo (o desfazer continua achando)."""
+    from lolitos import LEGACY_POWER_PLAN_NAMES, POWER_PLAN_NAME
+    if find_scheme_by_name(POWER_PLAN_NAME):
+        return
+    for old in LEGACY_POWER_PLAN_NAMES:
+        guid = find_scheme_by_name(old)
+        if guid:
+            run(["powercfg", "-changename", guid, POWER_PLAN_NAME, "Criado pelo Chinese Control"])
+            return
+
+
 def ensure_power_plan(name: str) -> str:
     """Cria (se preciso) uma cópia do Desempenho Máximo com o nome dado e devolve o GUID."""
     guid = find_scheme_by_name(name)
@@ -349,7 +361,7 @@ def ensure_power_plan(name: str) -> str:
     if not m:
         raise ActionError("não foi possível criar o plano de energia")
     guid = m.group(1).lower()
-    run(["powercfg", "-changename", guid, name, "Criado pelo Lolitos Control"])
+    run(["powercfg", "-changename", guid, name, "Criado pelo Chinese Control"])
     return guid
 
 

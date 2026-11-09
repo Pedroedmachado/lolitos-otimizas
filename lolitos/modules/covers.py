@@ -1,7 +1,7 @@
 """Capas dos jogos (arte vertical 600×900, a mesma da biblioteca da Steam).
 
 Ordem: cache do app → cache local da Steam (appcache/librarycache) → CDN da Steam pelo appid → busca do nome na
-loja da Steam (jogos da Epic, GOG, Ubisoft…). Fica tudo guardado em %LOCALAPPDATA%\\LolitosControl\\covers;
+loja da Steam (jogos da Epic, GOG, Ubisoft…). Fica tudo guardado em %LOCALAPPDATA%\\ChineseControl\\covers;
 se nada for achado, a tela desenha uma capa com as iniciais."""
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def _get(url: str, timeout: float = 8) -> bytes | None:
     host = urllib.parse.urlparse(url).hostname or ""
     if not any(host == h or host.endswith("." + h) for h in ALLOWED):
         return None
-    req = urllib.request.Request(url, headers={"User-Agent": "LolitosControl"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ChineseControl"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             if r.status != 200:
