@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import re
 
-from PySide6.QtWidgets import QComboBox, QProgressBar, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QProgressBar, QVBoxLayout
 
 from lolitos.core.system import resource_path
-from lolitos.core.tweaks import CATALOG, CATS, by_cat
+from lolitos.core.tweaks import CATALOG, by_cat
 from lolitos.modules import antivirus
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
@@ -26,17 +26,18 @@ def _mouse():
 
 
 class _TweakPage(Page):
-    """Página com uma lista de ajustes (montada na primeira visita)."""
+    """Página com ajustes em cartões (montada na primeira visita)."""
     note = ""
 
     def tweaks(self):
         return []
 
     def build(self):
+        from lolitos.ui.tweakgrid import TweakGrid
         if self.note:
             self.body.addWidget(label(self.note, "muted", rich=True))
         self.extra_top()
-        self.tl = TweakList(self.tweaks(), self)
+        self.tl = TweakGrid(self.tweaks(), self, header=self.actions, profile=False)
         self.body.addWidget(self.tl)
         self.extra_bottom()
 
@@ -51,45 +52,27 @@ class _TweakPage(Page):
             self.tl.refresh()
 
 
-# ===================================================================== Windows (abas)
-WIN_TABS = ["desempenho", "jogos", "rede", "privacidade", "interface", "atualizacoes", "seguranca", "apps"]
+# ===================================================================== Windows (cartões com filtros)
+WIN_GROUPS = [("Geral", {"atualizacoes", "seguranca", "apps"}), ("Aparência", {"interface"}),
+              ("Desempenho", {"desempenho"}), ("Privacidade", {"privacidade"}), ("Jogos", {"jogos"}),
+              ("Rede", {"rede"}), ("IA", {"ia"})]
 
 
 class WindowsPage(Page):
     title = "Windows"
-    subtitle = ("Ajustes do sistema separados por assunto. Cada cartão diz o que muda, mostra o estado lido do seu "
-                "Windows e pode ser desfeito. Essencial é seguro em qualquer PC; Recomendado tem uma contrapartida "
-                "pequena; Avançado pede confirmação.")
+    subtitle = ("Configurações do sistema. Cada cartão diz o que muda, mostra o estado lido do seu Windows e pode ser "
+                "desfeito a qualquer momento. Mouse, teclado e placa de vídeo têm telas próprias.")
 
     def build(self):
-        self.tabs = QTabWidget()
-        self.lists: dict[str, TweakList] = {}
-        self.holders: dict[str, QVBoxLayout] = {}
-        for cat in WIN_TABS:
-            w = QWidget()
-            lay = QVBoxLayout(w)
-            lay.setContentsMargins(0, 12, 0, 0)
-            self.holders[cat] = lay
-            self.tabs.addTab(w, CATS[cat])
-        self.tabs.currentChanged.connect(self._ensure)
-        self.body.addWidget(self.tabs)
-        self._ensure(0)
-
-    def _ensure(self, idx: int):
-        cat = WIN_TABS[idx]
-        if cat in self.lists:
-            self.lists[cat].refresh()
-            return
-        tl = TweakList(by_cat(cat), self)
-        self.lists[cat] = tl
-        self.holders[cat].addWidget(tl)
-        self.holders[cat].addStretch()
+        from lolitos.ui.tweakgrid import TweakGrid
+        cats = set().union(*(c for _, c in WIN_GROUPS))
+        tweaks = [t for t in CATALOG.values() if t.cat in cats]
+        self.tl = TweakGrid(tweaks, self, groups=WIN_GROUPS, header=self.actions)
+        self.body.addWidget(self.tl)
 
     def on_show(self):
         if self._built:
-            cur = WIN_TABS[self.tabs.currentIndex()]
-            if cur in self.lists:
-                self.lists[cur].refresh()
+            self.tl.refresh()
 
 
 # ===================================================================== Mouse / Teclado / GPU

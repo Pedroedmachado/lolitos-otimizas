@@ -77,6 +77,19 @@ QLabel#newtag {{ color: {c['accent2']}; font-size: 8pt; font-weight: 800; }}
 QPushButton#outline {{ background: transparent; border: 1px solid {c['accent']}; border-radius: 8px; font-weight: 700;
     padding: 8px; }}
 QPushButton#outline:hover {{ background: {c['deepbg']}; }}
+QFrame#tcard {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 12px; }}
+QFrame#tcardrec {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {c['hero1']}, stop:1 {c['panel']});
+    border: 1px solid {c['border2']}; border-radius: 12px; }}
+QFrame#tcard:hover, QFrame#tcardrec:hover {{ border-color: {c['accent']}; }}
+QLabel#tctitle {{ font-size: 11pt; font-weight: 800; }}
+QLabel#tcwarn {{ color: {c['gold']}; font-size: 8.5pt; }}
+QLabel#tagrec {{ color: {c['accent2']}; background: {c['deepbg']}; border-radius: 4px; padding: 2px 7px;
+    font-size: 8pt; font-weight: 800; }}
+QLabel#tagrestart {{ color: #2dd4bf; background: rgba(45,212,191,0.12); border-radius: 4px; padding: 2px 7px;
+    font-size: 8pt; font-weight: 800; }}
+QLabel#tagadv {{ color: {c['gold']}; background: rgba(245,184,46,0.12); border-radius: 4px; padding: 2px 7px;
+    font-size: 8pt; font-weight: 800; }}
+QLabel#barname {{ color: {c['muted']}; font-size: 8.5pt; }}
 QPushButton#chip {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 4px; padding: 6px 12px;
     font-weight: 700; color: {c['text']}; }}
 QPushButton#chip:hover {{ border-color: {c['border2']}; }}
