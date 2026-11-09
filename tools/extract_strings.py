@@ -39,11 +39,15 @@ def literal(node) -> str | None:
 
 def visible(s: str) -> bool:
     t = re.sub(r"<[^>]+>|\{\}", " ", s).strip()
+    marked = bool(re.match(r"^[^A-Za-zÀ-ú0-9]+\s*[a-zà-ú]", t))   # "● essencial"
     t = re.sub(r"^[^A-Za-zÀ-ú]+", "", t)          # ícones, marcadores e números no começo
+    if marked and re.fullmatch(r"[a-zà-ú]{4,}", t):
+        return True
     if len(t) < 2 or not re.search(r"[A-Za-zÀ-ú]{2}", t):
         return False
-    if re.search(r"(^|[\s\"'])(HK(LM|CU|EY)|[A-Z]:\\|\\\\|%[A-Z]+%|\$_|Get-|Set-|New-|Remove-|-Command)|::", s):
-        return False
+    if re.search(r"(^|[\s\"'])(HK(LM|CU|EY)|[A-Z]:\\|\\\\|%[A-Z]+%|\$_|Get-|Set-|New-|Remove-|-Command)|::", s) \
+            and (len(re.findall(r"\b[a-zà-ú]{3,}\b", t)) < 4 or re.search(r"\$_|Get-|Set-|-Command|::", s)):
+        return False    # comando ou caminho (uma frase que só cita um caminho continua valendo)
     if "\\" in s and " " not in s:
         return False
     if re.fullmatch(r"[\w.\-/:%?=&]+", t) and not re.fullmatch(r"[A-ZÀ-Ú][A-Za-zÀ-ú\-]+[.:!?…]?", t):

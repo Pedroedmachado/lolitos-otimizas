@@ -46,9 +46,10 @@ def pc_analysis():
     p = pcprofile.detect()
     skipped = [t.title for t in CATALOG.values() if t.level != "avancado" and t.cat != "debloat" and t.when
                and not t.recommended_here()]
-    rec = (f"{len(boost_ids())} ajustes recomendados; {len(skipped)} deixados de fora porque não se aplicam ou "
-           f"não ajudam neste PC" + (f": {', '.join(skipped[:6])}{'…' if len(skipped) > 6 else ''}."
-                                            if skipped else "."))
+    from lolitos.i18n import tr
+    rec = tr(f"{len(boost_ids())} ajustes recomendados; {len(skipped)} deixados de fora porque não se aplicam ou "
+             f"não ajudam neste PC") + ((": " + ", ".join(tr(t) for t in skipped[:6]) + ("…" if len(skipped) > 6 else "."))
+                                        if skipped else ".")
     return p, pcprofile.advice(), rec
 
 

@@ -165,7 +165,8 @@ def test_i18n_templates():
         i18n.set_table("en", {"Fechar": "Close", "Desempenho": "Performance",
                               "{} app(s) instalados.": "{} app(s) installed.",
                               "<b>{}</b> · perda {}%": "<b>{}</b> · loss {}%",
-                              "Uso de {}": "{} usage"})
+                              "Uso de {}": "{} usage", "Jogos pedem mais.": "Games need more.",
+                              "<b>Instalação:</b> {}": "<b>Install:</b> {}"})
         assert i18n.tr("Fechar") == "Close"
         assert i18n.tr("  Fechar\n") == "  Close\n"
         assert i18n.tr("12 app(s) instalados.") == "12 app(s) installed."
@@ -174,6 +175,8 @@ def test_i18n_templates():
         assert i18n.tr("Fechar<br>Desempenho") == "Close<br>Performance"
         assert i18n.tr("<b>Fechar</b> · 10 min") == "<b>Close</b> · 10 min"
         assert i18n.tr("Desempenho · x86 · Fechar") == "Performance · x86 · Close"
+        assert i18n.tr("8 GB. Jogos pedem mais.") == "8 GB. Games need more."
+        assert i18n.tr("<b>Instalação:</b> <span>Fechar</span>") == "<b>Install:</b> <span>Close</span>"
         assert i18n.tr("sem tradução") == "sem tradução"
     finally:
         i18n.set_table("pt", {})

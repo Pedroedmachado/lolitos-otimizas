@@ -55,6 +55,15 @@ def set_table(lang: str, data: dict) -> None:
                 for a, b in zip(pt.split(sep), tr_.split(sep)):
                     if a.strip() and a.strip() != "{}":
                         data.setdefault(a.strip(), b.strip())
+        # mesma sequência de tags nos dois idiomas (conferido nos testes): cada trecho de texto entre tags
+        # também vale sozinho, para frases HTML montadas por partes
+        if isinstance(tr_, str) and "<" in pt:
+            pa, pb = _TAG.split(pt), _TAG.split(tr_)
+            if len(pa) == len(pb) > 1:
+                for i in range(0, len(pa), 2):
+                    a, b = pa[i].strip(), pb[i].strip()
+                    if a and b and re.search(r"[A-Za-zÀ-ú]{3}", a.replace("{}", "")):
+                        data.setdefault(a, b)
     for pt, tr_ in data.items():
         if not tr_ or not isinstance(tr_, str):
             continue
@@ -115,11 +124,17 @@ def _cached(s: str) -> str:
             continue
         m = rx.fullmatch(core)
         if m:
-            vals = [_exact.get(g.strip(), g) for g in m.groups()]
+            vals = [_cached(g) if len(g) < len(core) and re.search(r"[A-Za-zÀ-ú]{2}", g) else g
+                    for g in m.groups()]
             try:
                 return pre + _fill(out, vals) + post
             except (IndexError, KeyError, ValueError):
                 break
+    lead = re.match(r"^([•●›\-–—·*]+\s*)(\S.*)$", core, re.S)     # marcador na frente: "• texto"
+    if lead:
+        t = _cached(lead.group(2))
+        if t != lead.group(2):
+            return pre + lead.group(1) + t + post
     # frase montada em partes: traduz cada linha, cada trecho de texto entre tags e cada item separado por "·"
     for sep in ("<br>", "\n"):
         if sep in core:
@@ -132,6 +147,14 @@ def _cached(s: str) -> str:
     for sep in (" · ", " — ", " | "):
         if sep in core:
             return pre + sep.join(_cached(p) if p.strip() else p for p in core.split(sep)) + post
+    if ". " in core:     # frases coladas: "8 GB. Jogos atuais…"
+        pieces = core.split(". ")
+        out = []
+        for i, p in enumerate(pieces):
+            last = i == len(pieces) - 1
+            t = _cached(p if last else p + ".")
+            out.append(t if last else (t[:-1] if t.endswith(".") else t))
+        return pre + ". ".join(out) + post
     return s
 
 
@@ -185,6 +208,18 @@ def install() -> None:
     wrap(QSystemTrayIcon, "showMessage")
     wrap(QSystemTrayIcon, "showMessage", 1)
     wrap(QSystemTrayIcon, "setToolTip")
+
+    # textos passados no construtor (QCheckBox("..."), QPushButton("...")) em telas montadas depois:
+    # as telas importam estas classes depois de load(), então recebem a versão que traduz
+    from PySide6 import QtWidgets
+    for name in ("QCheckBox", "QPushButton", "QRadioButton", "QLabel", "QGroupBox"):
+        base = getattr(QtWidgets, name)
+
+        def init(self, *a, _base=base, **k):
+            if a and isinstance(a[0], str):
+                a = (tr(a[0]), *a[1:])
+            _base.__init__(self, *a, **k)
+        setattr(QtWidgets, name, type(name, (base,), {"__init__": init, "__module__": __name__}))
 
     orig_add = QComboBox.addItem
 
