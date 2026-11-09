@@ -10,6 +10,12 @@ def main() -> int:
 
     migrate_old_data()
 
+    if "--weekly-review" in sys.argv:   # tarefa agendada da Revisão semanal: roda sem janela e sai
+        logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        from lolitos.modules import weekly
+        return weekly.main_headless()
+
     sys.setswitchinterval(0.001)   # a thread da interface recupera o GIL mais rápido
     logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")

@@ -14,7 +14,7 @@ from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
 from lolitos.ui.widgets import Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async
 
-MOUSE_IDS = ["mouse_accel_off", "mouse_sensitivity_default", "mouse_trails_off"]
+MOUSE_IDS = ["mouse_accel_off", "mouse_no_delay", "mouse_sensitivity_default", "mouse_trails_off"]
 
 
 def _keyboard():
@@ -109,7 +109,8 @@ class GpuPage(_TweakPage):
                 "no quadro a quadro.")
 
     def tweaks(self):
-        return by_cat("gpu")
+        extra = [CATALOG[i] for i in ("pcie_aspm",) if i in CATALOG]   # também mexe no caminho da placa de vídeo
+        return by_cat("gpu") + extra
 
     def extra_top(self):
         self.mon = label("Lendo os monitores…", "muted", rich=True)
@@ -313,7 +314,7 @@ FRESH_GROUPS = [
         ("WizTree", "AntibodySoftware.WizTree"), ("WinDirStat", "WinDirStat.WinDirStat"), ("PowerToys", "Microsoft.PowerToys"),
         ("Notepad++", "Notepad++.Notepad++"), ("qBittorrent", "qBittorrent.qBittorrent"), ("AutoHotkey", "AutoHotkey.AutoHotkey"),
         ("Rufus", "Rufus.Rufus"), ("Ventoy", "Ventoy.Ventoy"), ("LocalSend", "LocalSend.LocalSend"),
-        ("UniGetUI", "MartiCliment.UniGetUI"), ("Bulk Crap Uninstaller", "Klocman.BulkCrapUninstaller"),
+        ("UniGetUI", "Devolutions.UniGetUI"), ("Bulk Crap Uninstaller", "Klocman.BulkCrapUninstaller"),
         ("Revo Uninstaller", "RevoUninstaller.RevoUninstaller"), ("BleachBit", "BleachBit.BleachBit"),
         ("Malwarebytes", "Malwarebytes.Malwarebytes"), ("Bitwarden", "Bitwarden.Bitwarden"), ("Proton VPN", "Proton.ProtonVPN"),
         ("Speedtest by Ookla", "Ookla.Speedtest.Desktop"), ("AnyDesk", "AnyDesk.AnyDesk"), ("TeamViewer", "TeamViewer.TeamViewer"),
@@ -368,10 +369,20 @@ def fresh_setup(rp, boost, debloat, app_ids, clean, extras=(), progress=None):
                 say(f"   {wid}…")
                 r = winget.install_or_upgrade(wid, have)
                 say("      ok" if r.ok else f"      código {r.code}")
+    new_users = "default_user" in extras
+    extras = [i for i in extras if i != "default_user"]
     if extras:
         say("Extras…")
         ex = [CATALOG[i] for i in extras if i in CATALOG and CATALOG[i].status() not in ("on", "na")]
         say("   " + (bulk_apply(ex, say, restore_point=False) if ex else "já estavam aplicados.").replace("\n", "\n   "))
+    if new_users:
+        from lolitos.modules import default_profile
+        say("Contas criadas depois neste PC…")
+        cands = [t for t in CATALOG.values() if default_profile.hkcu_values([t])]
+        on = [t for t in cands if t.status() == "on"]
+        n, err = default_profile.apply_to_default(on, say)
+        if err:
+            say(f"   não aplicado: {err}")
     if clean:
         say("5. Limpando temporários…")
         freed = 0

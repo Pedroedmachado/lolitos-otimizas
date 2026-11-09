@@ -17,6 +17,7 @@ from lolitos.ui.theme import C
 from lolitos.ui.widgets import Card, Page, TaskDialog, button, info, label, run_async
 
 RB = "recycle"      # a Lixeira entra na lista como mais um item
+DNS = "dns"         # o cache de DNS também (não ocupa disco: só aparece na lista de baixo)
 
 
 def _system_drive() -> str:
@@ -32,6 +33,8 @@ class CleanupPage(Page):
         self.actions.addWidget(button("Limpar selecionados", "primary", self._clean))
         items = [(t.id, t.name, t.desc, t.default and (is_admin() or not t.admin), t.admin) for t in cleanup.TARGETS]
         items.insert(2, (RB, "Lixeira", "Esvazia a Lixeira de todas as unidades.", True, False))
+        items.append((DNS, "Cache de DNS", "Esvazia o cache de nomes de sites. Resolve sites que não abrem depois de "
+                      "mudarem de servidor.", True, False))
         self.items = items
 
         # ------------------------------------------------ disco + lixo por categoria
@@ -60,7 +63,7 @@ class CleanupPage(Page):
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(5)
         self.bars, self.bar_sizes = {}, {}
-        for i, (tid, name, *_r) in enumerate(items):
+        for i, (tid, name, *_r) in enumerate(i for i in items if i[0] != DNS):
             grid.addWidget(label(name, "barname", wrap=False), i, 0)
             b = QProgressBar()
             b.setRange(0, 1000)
@@ -155,6 +158,7 @@ class CleanupPage(Page):
     def _measure(self):
         for sz in list(self.sizes.values()) + list(self.bar_sizes.values()):
             sz.setText(tr("medindo…"))
+        self.sizes[DNS].setText("—")
 
         def work():
             out = {t.id: cleanup.measure(t)[1] for t in cleanup.TARGETS}
@@ -180,9 +184,10 @@ class CleanupPage(Page):
 
     # ---------------------------------------------------------------- ações
     def _clean(self):
-        ids = [k for k, c in self.checks.items() if c.isChecked() and k != RB]
+        ids = [k for k, c in self.checks.items() if c.isChecked() and k not in (RB, DNS)]
         rb = self.checks[RB].isChecked()
-        if not ids and not rb:
+        dns = self.checks[DNS].isChecked()
+        if not ids and not rb and not dns:
             info(self, "Limpeza", "Marque pelo menos um item.")
             return
 
@@ -198,6 +203,11 @@ class CleanupPage(Page):
                 n, b = cleanup.recycle_bin_size()
                 cleanup.empty_recycle_bin()
                 res["rb"] = (n, b, 0)
+            if dns:
+                from lolitos.core.system import run
+                progress("Esvaziando o cache de DNS…")
+                r = run(["ipconfig", "/flushdns"], timeout=30)
+                progress("   " + ("cache de DNS limpo" if r.ok else "o Windows não deixou limpar o cache de DNS"))
             s = cleanup.summary_text(res)
             history.add("task", f"Limpeza: {s}", "Limpeza", reversible=False)
             settings.set("last_cleanup", time.time())

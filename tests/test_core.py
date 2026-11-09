@@ -350,3 +350,51 @@ def test_nv_apply_and_revert_existing_profile():
     p = d.profiles["Black Desert Online"]
     assert p["vals"] == {276158834: 1} and p["apps"] == {"blackdesert64.exe"}
     assert d.get("Black Desert Online", 549528094)["value"] == 2
+
+
+# ---------------------------------------------------------------- itens que completam o catálogo
+def test_extras_registered():
+    from lolitos.core.tweaks import CATALOG
+    for tid in ("start_hide_recommended", "notif_center_off", "multi_invoke_menu", "ctx_cast_off", "ctx_compat_off",
+                "boot_menu_name", "netfx3_on", "track_progs_off", "data_collect_tasks", "motion_bg_off",
+                "bg_apps_policy", "wer_logging_off", "spooler_manual", "diag_collector_manual",
+                "appcompat_engine_off", "cap_onesync", "rdp_client_remove", "mouse_no_delay"):
+        t = CATALOG[tid]
+        assert t.title and t.desc and t.actions
+    # curvas do mouse: 40 bytes cada
+    acts = CATALOG["mouse_no_delay"].actions
+    assert all(len(bytes.fromhex(a.value)) == 40 for a in acts if a.kind == "binary")
+
+
+def test_gpu_pdh_pick_dedicated():
+    from lolitos.modules.gpu import _luid, pick_adapter
+    assert _luid("pid_12_luid_0x00000000_0x0000D1A3_phys_0_eng_0_engtype_3D") == "0x00000000_0x0000d1a3"
+    eng = {"pid_1_luid_0x0_0xAAA_phys_0_eng_0_engtype_3D": 30.0,     # integrada
+           "pid_2_luid_0x0_0xBBB_phys_0_eng_0_engtype_3D": 50.0,     # dedicada (dois processos)
+           "pid_3_luid_0x0_0xBBB_phys_0_eng_0_engtype_3D": 40.0}
+    mem = {"luid_0x0_0xAAA_phys_0": 2e8, "luid_0x0_0xBBB_phys_0": 4e9}
+    r = pick_adapter(eng, mem)
+    assert r == {"util": 90, "vram_used": 4000000000}
+    assert pick_adapter({}, {}) == {}
+
+
+def test_default_profile_values():
+    from lolitos.core.tweaks import CATALOG
+    from lolitos.modules import default_profile
+    vals = default_profile.hkcu_values([CATALOG["show_ext"], CATALOG["telemetry_min"]])
+    assert any(n == "HideFileExt" for _, n, *_ in vals)
+    assert not any(n == "AllowTelemetry" for _, n, *_ in vals)   # HKLM fica de fora
+
+
+def test_weekly_command():
+    from lolitos.modules import weekly
+    exe, args = weekly._command()
+    assert weekly.ARG in args and exe
+
+
+def test_affinity_modes():
+    from lolitos.modules.games import affinity_cpus
+    import psutil
+    assert affinity_cpus("") is None
+    n = psutil.cpu_count(logical=True)
+    assert affinity_cpus("vcache") == list(range(n // 2))

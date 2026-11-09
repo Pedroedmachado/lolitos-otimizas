@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{APP_NAME} {VERSION}" + ("" if is_admin() else "  (sem administrador)"))
         self.setWindowIcon(icon())
         self.resize(1240, 820)
-        self.setMinimumSize(980, 640)
+        self.setMinimumSize(800, 600)
         root = QWidget()
         root.setObjectName("root")
         self.setCentralWidget(root)
@@ -154,7 +154,8 @@ class MainWindow(QMainWindow):
         lay.addWidget(side)
         lay.addWidget(self.stack, 1)
         if settings.get("nav_collapsed"):
-            self.toggle_collapse()
+            self._set_collapsed(True)
+            settings.set("nav_manual", True)
 
         from lolitos.i18n import translate_tree
         translate_tree(side)
@@ -173,8 +174,24 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(900, self.first_run)
 
     # ---------------------------------------------------------------- barra lateral
+    AUTO_COLLAPSE_W = 1100     # abaixo disso o menu recolhe sozinho (a menos que você tenha escolhido)
+
     def toggle_collapse(self):
+        """Clique no 'Recolher menu': vira escolha manual, que vale também em janela estreita."""
         col = self.side.width() > 100
+        self._set_collapsed(col)
+        settings.set("nav_collapsed", col)
+        settings.set("nav_manual", True)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if settings.get("nav_manual") or not hasattr(self, "side"):
+            return
+        narrow = self.width() < self.AUTO_COLLAPSE_W
+        if narrow != (self.side.width() <= 100):
+            self._set_collapsed(narrow)
+
+    def _set_collapsed(self, col: bool):
         self.side.setFixedWidth(68 if col else 256)
         self.brand.set_collapsed(col)
         self.flags.setVisible(not col)
@@ -184,7 +201,6 @@ class MainWindow(QMainWindow):
             b.set_collapsed(col)
         self.update_btn.setText("⟳" if col else ("⟳  " + __import__("lolitos.i18n", fromlist=["tr"]).tr(
             "Procurar atualização")))
-        settings.set("nav_collapsed", col)
 
     def set_language(self, code: str):
         from lolitos.i18n import current, restart_text

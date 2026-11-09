@@ -114,7 +114,11 @@ class FreshPage(Page):
         self.ck_rp.setChecked(True)
         self.ck_photo = QCheckBox("Visualizador de Fotos clássico do Windows")
         self.ck_onedrive = QCheckBox("Remover o OneDrive")
-        for ck in (self.ck_rp, self.ck_photo, self.ck_onedrive):
+        self.ck_newusers = QCheckBox("Aplicar também para contas criadas depois neste PC")
+        self.ck_newusers.setChecked(True)
+        self.ck_newusers.setToolTip(tr("Os ajustes por usuário ativos vão para o perfil padrão do Windows: "
+                                       "toda conta nova já nasce otimizada."))
+        for ck in (self.ck_rp, self.ck_photo, self.ck_onedrive, self.ck_newusers):
             col.addWidget(ck)
         r.addLayout(col, 1)
         ex.lay.addLayout(r)
@@ -162,9 +166,9 @@ class FreshPage(Page):
     def _run(self):
         ids = self.grid.selected()
         boost = self.ck_boost.isChecked()
-        extras = [i for i, ck in (("photo_viewer_classic", self.ck_photo), ("onedrive_remove", self.ck_onedrive))
-                  if ck.isChecked()]
-        if not ids and not boost and not extras:
+        extras = [i for i, ck in (("photo_viewer_classic", self.ck_photo), ("onedrive_remove", self.ck_onedrive),
+                                  ("default_user", self.ck_newusers)) if ck.isChecked()]
+        if not ids and not boost and not [e for e in extras if e != "default_user"]:
             info(self, "Formatação", "Marque pelo menos um app, o Boost completo ou um extra.")
             return
         todo = []
@@ -172,8 +176,11 @@ class FreshPage(Page):
             todo.append(tr("ponto de restauração"))
         if boost:
             todo.append(tr("Boost completo (ajustes + debloat recomendados)"))
-        if extras:
-            todo.append(tr("{} extra(s)").replace("{}", str(len(extras))))
+        n_ex = len([e for e in extras if e != "default_user"])
+        if n_ex:
+            todo.append(tr("{} extra(s)").replace("{}", str(n_ex)))
+        if "default_user" in extras:
+            todo.append(tr("os mesmos ajustes para contas criadas depois"))
         if ids:
             todo.append(tr("{} programa(s)").replace("{}", str(len(ids))))
         if boost:

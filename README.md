@@ -1,7 +1,7 @@
 # Chinese Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.8.0. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.9.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-1.8.0-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-1.9.0-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -47,6 +47,26 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 1.9.0
+
+* **Revisão semanal** (Manutenção): disco, imagem do Windows (DISM) e arquivos do sistema (SFC), com botão
+  *Rodar agora* e opção de rodar sozinha todo domingo (se o PC estiver desligado, roda no próximo login).
+* **Painel:** cartão *Ações recomendadas* com os ajustes que faltam e um botão Aplicar em cada um.
+* **Formatação:** *Aplicar também para contas criadas depois neste PC* (os ajustes por usuário vão para o perfil
+  padrão do Windows).
+* **Perfis:** cartão *Padrão do Windows*, que desfaz tudo que o app aplicou.
+* **Jogos:** os núcleos escolhidos são conferidos a cada 10 s e aplicados de novo se o jogo os trocar.
+* **Overlay, Painel e Hardware Monitor:** uso e VRAM da placa de vídeo também em AMD e Intel (contadores do
+  Windows, escolhendo a placa dedicada).
+* **Limpeza:** cache de DNS na lista.
+* **Ajustes novos:** Iniciar sem a seção Recomendados, central de notificações e calendário, clique direito completo
+  com muitos arquivos, tirar *Transmitir para dispositivo* e *Solucionar problemas de compatibilidade* do clique
+  direito, nome no menu de inicialização, .NET 3.5, não registrar apps mais abertos, tarefas de coleta de dados,
+  movimento em segundo plano, apps em segundo plano por política, registro do Relatório de Erros, spooler e
+  coletor de diagnóstico sob demanda, Mecanismo de Compatibilidade, remover sincronização de Email/Calendário e
+  Conexão de Área de Trabalho Remota, **Mouse sem atrasos**. A tela GPU mostra também o PCI Express.
+* Menu lateral recolhe sozinho em janela estreita; a janela abre a partir de 800×600.
 
 ## Novidades da 1.8.0
 

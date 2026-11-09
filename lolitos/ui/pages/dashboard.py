@@ -59,7 +59,17 @@ def compute_score():
     ratio = sum(1 for s in valid if s == "on") / len(valid) if valid else 1
     checks = checkup.run_checkup()
     pending = sum(1 for s in valid if s != "on")
-    return checkup.score(checks, ratio), pending, checks
+    pend_ids = [i for i, s in st.items() if s not in ("on", "na")]
+    return checkup.score(checks, ratio), pending, checks, pend_ids
+
+
+def _clear_layout(lay):
+    while lay.count():
+        it = lay.takeAt(0)
+        if it.widget():
+            it.widget().deleteLater()
+        elif it.layout():
+            _clear_layout(it.layout())
 
 
 def user_name() -> str:
@@ -241,6 +251,19 @@ class Dashboard(Page):
         mon.lay.addLayout(tiles)
         self.body.addWidget(mon)
 
+        # ------------------------------------------------ ações recomendadas
+        self.act_card = Card()
+        hdr = card_header("bolt", "Ações recomendadas")
+        self.act_all = button("Ver todos ›", on_click=lambda: self.main and self.main.go("completa"))
+        self.act_all.setObjectName("outline")
+        hdr.addWidget(self.act_all)
+        self.act_card.lay.addLayout(hdr)
+        self.act_card.lay.addWidget(label("Ajustes recomendados para este PC que ainda estão desligados.", "muted"))
+        self.act_box = QVBoxLayout()
+        self.act_box.setSpacing(12)
+        self.act_card.lay.addLayout(self.act_box)
+        self.body.addWidget(self.act_card)
+
         # ------------------------------------------------ seu PC
         self.pc_card = Card()
         self.pc_card.lay.addLayout(card_header("pc", "Seu PC"))
@@ -298,8 +321,44 @@ class Dashboard(Page):
         self._clean_bytes = q.get("clean", 0)
         self._update_line()
 
+    def _actions(self, pend_ids):
+        while self.act_box.count():
+            it = self.act_box.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+            elif it.layout():
+                _clear_layout(it.layout())
+        if not pend_ids:
+            self.act_box.addWidget(label("Tudo que é recomendado já está ativo neste PC.", "muted"))
+            self.act_all.hide()
+            return
+        self.act_all.show()
+        from lolitos.core.tweaks import CATS
+        for tid in pend_ids[:5]:
+            t = CATALOG[tid]
+            row = QHBoxLayout()
+            col = QVBoxLayout()
+            col.setSpacing(1)
+            col.addWidget(label(f"<b>{tr(t.title)}</b>", rich=True))
+            col.addWidget(label(tr(t.desc), "muted"))
+            row.addLayout(col, 1)
+            row.addWidget(pill(tr(CATS.get(t.cat, t.cat)).upper()), 0, Qt.AlignVCenter)
+            b = button("Aplicar", "primary", lambda _=False, tt=t: self._apply_one(tt))
+            row.addWidget(b, 0, Qt.AlignVCenter)
+            self.act_box.addLayout(row)
+        if len(pend_ids) > 5:
+            self.act_box.addWidget(label(tr("e mais {} ajuste(s)…").replace("{}", str(len(pend_ids) - 5)), "muted"))
+
+    def _apply_one(self, t):
+        from lolitos.ui.tweaklist import confirm_advanced
+        if not confirm_advanced(self, t):
+            return
+        TaskDialog(self, tr(t.title), bulk_apply, [t], restore_point=False,
+                   on_done=lambda _: (self.refresh(), self.main and self.main.changed())).exec()
+
     def _scored(self, r):
-        score, pending, checks = r
+        score, pending, checks, pend_ids = r
+        self._actions(pend_ids)
         self.score, self.pending_n = score, pending
         self.gauge.set(score)
         self.score_lbl.setText(f"{score}<span style='font-size:14pt'>%</span>")

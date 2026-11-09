@@ -249,10 +249,11 @@ def _set_priority(p, level: str) -> str:
         return "prioridade não alterada (o jogo protege o próprio processo)"
 
 
-def _affinity(p, mode: str) -> str:
+def affinity_cpus(mode: str) -> list[int] | None:
+    """Threads que o jogo deve usar em cada modo (None = todas, sem mexer)."""
     import psutil
     if mode in ("", "all"):
-        return ""
+        return None
     n = psutil.cpu_count(logical=True)
     phys = psutil.cpu_count(logical=False) or n
     cpus = list(range(n))
@@ -266,11 +267,35 @@ def _affinity(p, mode: str) -> str:
         cpus = detect().pcores or cpus
     elif mode == "vcache":   # Ryzen X3D com 2 CCDs: o cache 3D fica no primeiro CCD
         cpus = list(range(n // 2))
+    return cpus
+
+
+def _affinity(p, mode: str) -> str:
+    import psutil
+    cpus = affinity_cpus(mode)
+    if cpus is None:
+        return ""
     try:
         p.cpu_affinity(cpus)
-        return f"afinidade {len(cpus)} de {n} threads"
+        return f"afinidade {len(cpus)} de {psutil.cpu_count(logical=True)} threads"
     except (psutil.AccessDenied, psutil.NoSuchProcess, ValueError):
         return "afinidade não alterada (o jogo protege o próprio processo)"
+
+
+def keep_affinity(proc, mode: str, stop: threading.Event, every: float = 10.0, log=None) -> None:
+    """Enquanto o jogo roda, confere os núcleos escolhidos e aplica de novo se o jogo os trocar."""
+    import psutil
+    cpus = affinity_cpus(mode)
+    while not stop.wait(every):
+        try:
+            if not proc.is_running():
+                return
+            if cpus is not None and sorted(proc.cpu_affinity()) != sorted(cpus):
+                proc.cpu_affinity(cpus)
+                if log:
+                    log("O jogo trocou os núcleos; os escolhidos foram aplicados de novo.")
+        except (psutil.AccessDenied, psutil.NoSuchProcess, ValueError):
+            return
 
 
 class Session(threading.Thread):
@@ -327,10 +352,16 @@ class Session(threading.Thread):
         say(f"{self.g.name} em execução: " + ", ".join(m for m in msgs if m) + ". Bom jogo!")
         if self.on_start:
             self.on_start(proc)
+        stop = threading.Event()
+        mode = opts.get("affinity", "")
+        if mode not in ("", "all"):
+            threading.Thread(target=keep_affinity, args=(proc, mode, stop), kwargs={"log": say},
+                             daemon=True).start()
         try:
             proc.wait()
         except psutil.Error:
             pass
+        stop.set()
         say(f"{self.g.name} fechou.")
         self._restore()
 

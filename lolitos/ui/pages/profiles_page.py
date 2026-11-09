@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QInputDia
 from PySide6.QtCore import Qt
 
 from lolitos.catalog import presets
+from lolitos.i18n import tr
 from lolitos.core import engine
 from lolitos.core.tweaks import CATALOG, CATS
 from lolitos.ui.tweaklist import bulk_apply
@@ -53,6 +54,15 @@ class ProfilesPage(Page):
                                  None))
             run_async(lambda pp=p: len(pp.ids()), on_done=lambda n, lb=cnt: lb.setText(f"{n} ajustes no pacote."))
             self.body.addWidget(c)
+        win = Card()
+        win.lay.addWidget(label("<b>Padrão do Windows</b>", rich=True))
+        win.lay.addWidget(label("Desfaz tudo que este app aplicou e volta os valores originais guardados no histórico. "
+                                "Apps removidos não voltam sozinhos (reinstale pela Microsoft Store).", "muted"))
+        self.win_cnt = label("", "muted")
+        win.lay.addWidget(self.win_cnt)
+        win.lay.addLayout(hrow(button("Voltar ao padrão do Windows", "danger", self._windows_default), None))
+        self.body.addWidget(win)
+        self._count_applied()
         self.body.addWidget(label("Meus perfis", "h2"))
         self.body.addLayout(hrow(button("Criar perfil…", on_click=self._new),
                                  button("Salvar ajustes ativos como perfil…", on_click=self._from_active),
@@ -83,6 +93,27 @@ class ProfilesPage(Page):
         ts = [CATALOG[i] for i in ids if i in CATALOG]
         TaskDialog(self, f"Aplicando: {name}", bulk_apply, ts,
                    on_done=lambda _: self.main and self.main.changed()).exec()
+
+    def _count_applied(self):
+        from lolitos.core import history
+        n = len([e for e in history.active_entries() if e.get("reversible", True) and e.get("tweak_id")])
+        self.win_cnt.setText(tr("{} ajuste(s) aplicados por este app podem ser desfeitos.").replace("{}", str(n)))
+
+    def _windows_default(self):
+        from lolitos.core import history
+        n = len([e for e in history.active_entries() if e.get("tweak_id")])
+        if not n:
+            info(self, "Padrão do Windows", "Nenhum ajuste aplicado por este app para desfazer.")
+            return
+        if not confirm(self, "Padrão do Windows", tr("Desfazer os {} ajuste(s) aplicados por este app?")
+                       .replace("{}", str(n)), yes="Desfazer tudo"):
+            return
+
+        def work(progress=None):
+            done, errs = engine.undo_all(progress)
+            return tr("{} desfeito(s).").replace("{}", str(done)) + ("\n" + "\n".join(errs[:10]) if errs else "")
+        TaskDialog(self, "Padrão do Windows", work,
+                   on_done=lambda _: (self._count_applied(), self.main and self.main.changed())).exec()
 
     def _undo(self, ids):
         from lolitos.core import history
