@@ -269,7 +269,7 @@ class AppGrid(QWidget):
     def _relayout(self):
         w = self.width() if self.width() > 300 else 1400
         cols = max(1, (w + 10) // (MIN_W + 10))
-        tw = int((w - 10 * (cols - 1)) / cols)
+        tw = int((w - 10 * (cols - 1)) / cols) - 1
         if cols == self._cols and tw == getattr(self, "_tw", 0):
             return
         self._cols, self._tw = cols, tw
