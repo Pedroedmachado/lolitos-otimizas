@@ -1,0 +1,82 @@
+name: Gerar instalador
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pytest
+
+      - name: Testes
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONIOENCODING: utf-8
+        run: python -m pytest -q tests
+
+      - name: Ícone e imagens do instalador
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python tools/make_icon.py
+
+      - name: Programa (.exe)
+        run: >
+          pyinstaller --noconfirm --clean --windowed --uac-admin
+          --name LolitosOtimizacoes
+          --icon build\lolitos.ico
+          --add-data "lolitos\data;lolitos\data"
+          --distpath dist --workpath build\pyi
+          run_lolitos.pyw
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+                  Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc /Q installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist\*.exe
+
+      - name: Versão
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path lolitos\__init__.py -Pattern 'VERSION = "(.+)"').Matches[0].Groups[1].Value
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LolitosOtimizacoes-${{ steps.ver.outputs.version }}-Setup
+          path: dist/LolitosOtimizacoes-*-Setup.exe
+
+      - name: Publicar na aba Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Lolitos Otimizações ${{ steps.ver.outputs.version }}
+          body: |
+            Instalador do Lolitos Otimizações ${{ steps.ver.outputs.version }}.
+            Baixe o **LolitosOtimizacoes-${{ steps.ver.outputs.version }}-Setup.exe** abaixo e execute.
+            Gerado automaticamente pelo GitHub Actions a partir do código deste repositório.
+          files: dist/LolitosOtimizacoes-*-Setup.exe
+          make_latest: true

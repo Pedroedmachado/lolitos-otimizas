@@ -1,0 +1,46 @@
+"""Mouse e teclado."""
+from lolitos.core.actions import Reg, regs
+from lolitos.core.tweaks import ADVANCED, ESSENTIAL, RECOMMENDED, Tweak, register
+
+HKCU = "HKCU"
+
+register(
+    Tweak("mouse_accel_off", "Desligar a aceleração do mouse",
+          "Desmarca 'Aprimorar precisão do ponteiro': o cursor anda exatamente o que a mão andou (1:1).",
+          "entrada", regs(HKCU, r"Control Panel\Mouse", kind="sz", MouseSpeed="0",
+                          MouseThreshold1="0", MouseThreshold2="0"),
+          ESSENTIAL, gain="Mira e câmera consistentes — essencial para combo e grab no PvP."),
+    Tweak("mouse_sensitivity_default", "Sensibilidade do Windows no ponto neutro (6/11)",
+          "Deixa a velocidade do ponteiro no meio, onde não há multiplicação nem perda de pixels.",
+          "entrada", [Reg(HKCU, r"Control Panel\Mouse", "MouseSensitivity", "10", "sz")], RECOMMENDED,
+          loss="Se você usa outra velocidade, ajuste o DPI no software do mouse."),
+    Tweak("mouse_trails_off", "Sem rastro no ponteiro",
+          "Garante o rastro do ponteiro desligado.",
+          "entrada", [Reg(HKCU, r"Control Panel\Mouse", "MouseTrails", "0", "sz")],
+          RECOMMENDED),
+    Tweak("sticky_keys_off", "Sem atalhos de acessibilidade no meio do jogo",
+          "Apertar Shift 5 vezes ou segurar Shift não abre mais Teclas de Aderência/Filtragem/Alternância.",
+          "entrada", [Reg(HKCU, r"Control Panel\Accessibility\StickyKeys", "Flags", "506", "sz"),
+                      Reg(HKCU, r"Control Panel\Accessibility\ToggleKeys", "Flags", "58", "sz"),
+                      Reg(HKCU, r"Control Panel\Accessibility\Keyboard Response", "Flags", "122", "sz"),
+                      Reg(HKCU, r"Control Panel\Accessibility\MouseKeys", "Flags", "0", "sz")],
+          ESSENTIAL, gain="Shift é tecla de skill no BDO: nada de janela de acessibilidade em cima da luta."),
+    Tweak("keyboard_repeat", "Teclado com resposta mais rápida",
+          "Menor atraso antes de a tecla repetir e repetição na velocidade máxima.",
+          "entrada", regs(HKCU, r"Control Panel\Keyboard", kind="sz", KeyboardDelay="0", KeyboardSpeed="31"),
+          RECOMMENDED, loss="Teclas repetem mais cedo ao digitar."),
+    Tweak("lang_hotkey_off", "Sem troca de idioma por Alt+Shift",
+          "Alt+Shift e Ctrl+Shift não trocam mais o layout do teclado sem querer no meio do combo.",
+          "entrada", regs(HKCU, r"Keyboard Layout\Toggle", kind="sz", **{"Hotkey": "3", "Language Hotkey": "3",
+                                                                       "Layout Hotkey": "3"}),
+          ESSENTIAL, gain="Evita o clássico 'teclado virou inglês' no meio da Guerra de Nodes.",
+          loss="Troque o idioma pelo Win+Espaço. Vale após sair e entrar na conta."),
+    Tweak("narrator_hotkey_off", "Sem atalho do Narrador",
+          "Ctrl+Win+Enter não abre mais o Narrador por acidente.",
+          "entrada", [Reg(HKCU, r"Software\Microsoft\Narrator\NoRoam", "WinEnterLaunchEnabled", 0)], ESSENTIAL),
+    Tweak("numlock_on", "Num Lock ligado ao iniciar",
+          "O teclado numérico já começa ativo no login e na sessão.",
+          "entrada", [Reg("HKU", r".DEFAULT\Control Panel\Keyboard", "InitialKeyboardIndicators", "2", "sz"),
+                      Reg(HKCU, r"Control Panel\Keyboard", "InitialKeyboardIndicators", "2", "sz")],
+          ADVANCED),
+)

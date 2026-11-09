@@ -1,0 +1,22 @@
+﻿LOLITOS OTIMIZAÇÕES — TERMOS DE USO
+
+1. O Lolitos Otimizações altera configurações do Windows (registro, serviços, tarefas
+   agendadas, plano de energia) e o arquivo de opções do Black Desert Online
+   (GameOption.txt) somente quando você manda.
+
+2. Cada ajuste guarda o valor anterior e pode ser desfeito na tela Restauração. Antes
+   de aplicar em lote, o app cria (ou reaproveita) um ponto de restauração do Windows.
+   O GameOption.txt sempre recebe backup antes de ser alterado.
+
+3. O app não injeta código em jogos, não lê a memória de nenhum jogo e não contorna
+   antivírus nem anti-cheat. Prioridade e afinidade de processo são definidas pelas
+   mesmas funções do Gerenciador de Tarefas.
+
+4. Tudo roda localmente. O app só acessa a internet quando você pede (instalar apps
+   pelo winget, teste de velocidade, testes de rede).
+
+5. O software é fornecido "como está", sem garantia de qualquer tipo. Use os itens
+   marcados como "avançado" sabendo da contrapartida mostrada em cada um.
+
+6. Componentes de terceiros: catálogo de apps do projeto WinUtil (Chris Titus Tech,
+   licença MIT); PresentMon da Intel (licença MIT), opcional e baixado à parte.
