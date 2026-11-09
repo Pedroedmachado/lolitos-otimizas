@@ -3,6 +3,7 @@ from lolitos import POWER_PLAN_NAME
 from lolitos.core.actions import Cmd, Power, PowerPlan, Reg, Service, regs
 from lolitos.core.system import is_laptop, ram_gb
 from lolitos.core.tweaks import ADVANCED, ESSENTIAL, RECOMMENDED, Tweak, register
+from lolitos.modules import pcprofile as pc
 
 HKCU, HKLM = "HKCU", "HKLM"
 MM = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
@@ -83,7 +84,8 @@ register(
     Tweak("sysmain_off", "Desligar o SysMain (Superfetch)",
           "Para o pré-carregamento de programas na RAM. Em SSD o ganho é pequeno e ele mexe no disco o tempo todo.",
           "desempenho", [Service("SysMain", "disabled")], RECOMMENDED,
-          gain="Menos uso de disco e RAM em segundo plano.", loss="Em HD mecânico os programas abrem mais devagar."),
+          gain="Menos uso de disco e RAM em segundo plano.", loss="Em HD mecânico os programas abrem mais devagar (por isso só é recomendado com o Windows em SSD).",
+          when=pc.ssd_or_unknown),
     Tweak("search_index_off", "Desligar a indexação de arquivos",
           "Para o Windows Search, que fica lendo o disco para montar o índice.",
           "desempenho", [Service("WSearch", "disabled")], ADVANCED,
@@ -156,11 +158,12 @@ register(
                         Reg(HKCU, r"Control Panel\Desktop\WindowMetrics", "MinAnimate", "0", "sz"),
                         *regs(HKCU, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced",
                               TaskbarAnimations=0, ListviewShadow=0, ListviewAlphaSelect=0)],
-          RECOMMENDED, gain="Menos trabalho para a GPU fora do jogo.", loss="Janelas abrem sem animação."),
+          RECOMMENDED, gain="Menos trabalho para a GPU fora do jogo.", loss="Janelas abrem sem animação.",
+          when=pc.modest_or_mid),
     Tweak("transparency_off", "Desligar a transparência",
           "Remove o efeito acrílico de menus e barra de tarefas.",
           "interface", [Reg(HKCU, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency", 0)],
-          RECOMMENDED, loss="Visual mais chapado."),
+          RECOMMENDED, loss="Visual mais chapado.", when=pc.modest_or_mid),
     Tweak("menu_delay", "Menus sem atraso",
           "Submenus abrem na hora (MenuShowDelay = 0; o padrão espera 400 ms).",
           "interface", [Reg(HKCU, r"Control Panel\Desktop", "MenuShowDelay", "0", "sz")], ESSENTIAL),

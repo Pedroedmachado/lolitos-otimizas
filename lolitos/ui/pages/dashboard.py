@@ -10,7 +10,7 @@ from lolitos.catalog.presets import boost_ids
 from lolitos.core import settings
 from lolitos.core.system import is_admin
 from lolitos.core.tweaks import CATALOG
-from lolitos.modules import checkup, cleanup, gpu, memory
+from lolitos.modules import checkup, cleanup, gpu, memory, pcprofile
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import bulk_apply
 from lolitos.ui.widgets import Badge, Card, Page, TaskDialog, button, hrow, label, run_async
@@ -35,6 +35,18 @@ def boost(progress=None):
     r = memory.free_ram()
     say(f"   {r['freed'] / 1024**2:.0f} MB liberados")
     return out
+
+
+def pc_analysis():
+    """Perfil do PC, dicas e o que o Boost deixa de fora/inclui por causa dele."""
+    pcprofile.refresh_slow()
+    p = pcprofile.detect()
+    skipped = [t.title for t in CATALOG.values() if t.level != "avancado" and t.cat != "debloat" and t.when
+               and not t.recommended_here()]
+    rec = (f"{len(boost_ids())} ajustes recomendados; {len(skipped)} deixados de fora porque não se aplicam ou "
+           f"não ajudam neste PC" + (f": {', '.join(skipped[:6])}{'…' if len(skipped) > 6 else ''}."
+                                            if skipped else "."))
+    return p, pcprofile.advice(), rec
 
 
 def compute_score():
@@ -93,6 +105,14 @@ class Dashboard(Page):
             grid.addWidget(c, 0, i)
         self.body.addLayout(grid)
 
+        # análise do PC
+        self.pc_card = Card()
+        self.pc_card.lay.addWidget(label("Seu PC", "h2"))
+        self.pc_lbl = label("Analisando o hardware…", rich=True)
+        self.pc_card.lay.addWidget(self.pc_lbl)
+        self.body.addWidget(self.pc_card)
+        run_async(pc_analysis, on_done=self._pc)
+
         self.body.addWidget(label("Check-up do PC", "h2"))
         self.checks_box = QVBoxLayout()
         self.body.addLayout(self.checks_box)
@@ -101,6 +121,14 @@ class Dashboard(Page):
         self.timer.start(1500)
         psutil.cpu_percent()
         self.refresh()
+
+    def _pc(self, r):
+        p, adv, rec = r
+        lines = [f"<b style='color:{C['accent2']}'>{p.tier_name}</b> — " + " · ".join(p.summary())]
+        lines.append(f"<span style='color:{C['muted']}'>O Boost foi ajustado para este PC: {rec}</span>")
+        for t, txt in adv:
+            lines.append(f"<br><b>{t}</b><br><span style='color:{C['muted']}'>{txt}</span>")
+        self.pc_lbl.setText("<br>".join(lines))
 
     def refresh(self):
         self.pending.setText("Analisando o PC…")

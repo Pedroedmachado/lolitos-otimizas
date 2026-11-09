@@ -126,6 +126,20 @@ def test_known_games_and_installed_detection():
     assert v.exes == ["VALORANT-Win64-Shipping.exe"]
 
 
+def test_pc_profile_rules():
+    from lolitos.modules import pcprofile as pc
+    assert pc._is_dedicated("NVIDIA GeForce RTX 5070")
+    assert pc._is_dedicated("AMD Radeon RX 7800 XT")
+    assert not pc._is_dedicated("AMD Radeon(TM) Graphics")
+    assert not pc._is_dedicated("Intel(R) UHD Graphics 630")
+    assert pc._hags_capable(["NVIDIA GeForce GTX 1060 6GB"])
+    assert not pc._hags_capable(["NVIDIA GeForce GTX 970", "Intel(R) HD Graphics 4600"])
+    assert pc._hags_capable(["AMD Radeon RX 6600"]) and not pc._hags_capable(["AMD Radeon RX 580"])
+    p = pc.detect()
+    assert p.tier in ("modesto", "intermediario", "forte") and p.threads >= 1
+    assert isinstance(pc.advice(), list)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

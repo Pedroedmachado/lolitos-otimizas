@@ -261,6 +261,11 @@ def _affinity(p, mode: str) -> str:
     elif mode == "physical" and phys < n:
         step = n // phys
         cpus = list(range(0, n, step))
+    elif mode == "pcores":
+        from lolitos.modules.pcprofile import detect
+        cpus = detect().pcores or cpus
+    elif mode == "vcache":   # Ryzen X3D com 2 CCDs: o cache 3D fica no primeiro CCD
+        cpus = list(range(n // 2))
     try:
         p.cpu_affinity(cpus)
         return f"afinidade {len(cpus)} de {n} threads"

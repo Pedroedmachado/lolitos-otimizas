@@ -64,8 +64,8 @@ def run_checkup(hw: dict | None = None) -> list[Check]:
 
     gb = ram_gb()
     add(Check("ram_amount", "Quantidade de RAM", OK if gb >= 15 else WARN,
-              f"{gb:.0f} GB. " + ("Suficiente para BDO (Siege pede 16 GB+)." if gb >= 15
-                                   else "O BDO em Guerra/Cerco pede 16 GB ou mais."), ""))
+              f"{gb:.0f} GB. " + ("Suficiente para os jogos atuais." if gb >= 15
+                                   else "Jogos atuais (e o BDO em Guerra/Cerco) pedem 16 GB ou mais."), ""))
 
     hw = hw or hwinfo.read_all()
     rs = hwinfo.ram_summary(hw)

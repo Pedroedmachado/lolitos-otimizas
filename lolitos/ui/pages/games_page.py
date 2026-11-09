@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLineEdit, QVBoxLayout, QWidget
 
 from lolitos.core import settings
-from lolitos.modules import game_tweaks, gameserver, games
+from lolitos.modules import game_tweaks, gameserver, games, pcprofile
 from lolitos.modules.known_games import lookup
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
@@ -15,6 +15,19 @@ from lolitos.ui.widgets import Card, Page, ui_call, button, hrow, info, label, r
 
 STORE = {"steam": "Steam", "epic": "Epic Games", "bdo": "Black Desert", "gog": "GOG", "ubisoft": "Ubisoft Connect",
          "instalado": "Programas instalados", "manual": "Adicionado por você"}
+
+
+def affinity_modes() -> list[tuple[str, str]]:
+    """Opções de afinidade que fazem sentido NESTE processador."""
+    p = pcprofile.detect()
+    out = [("", "Todos os núcleos"), ("skip0", "Fora do núcleo 0")]
+    if p.hybrid and p.pcores:
+        out.append(("pcores", f"Só P-cores ({len(p.pcores)} threads)"))
+    if p.x3d_dual_ccd:
+        out.append(("vcache", "CCD com 3D V-Cache"))
+    if p.threads > p.cores:
+        out.append(("physical", "Só núcleos físicos"))
+    return out
 
 
 def _resolve_exe(g) -> tuple[str | None, str | None]:
@@ -49,10 +62,13 @@ class GameCard(Card):
         self.pr.addItems(["Prioridade alta", "Acima do normal", "Normal"])
         self.pr.setCurrentIndex({"high": 0, "above": 1, "normal": 2}.get(opts.get("priority", "high"), 0))
         self.af = QComboBox()
-        self.af.addItems(["Todos os núcleos", "Fora do núcleo 0", "Só núcleos físicos"])
-        self.af.setCurrentIndex({"": 0, "skip0": 1, "physical": 2}.get(opts.get("affinity", ""), 0))
-        self.af.setToolTip("Fora do núcleo 0: o mais ocupado por drivers. Só físicos: sem SMT/Hyper-Threading "
-                           "(frametime mais estável em alguns jogos, menos FPS em outros).")
+        for key, txt in affinity_modes():
+            self.af.addItem(txt, key)
+        idx = self.af.findData(opts.get("affinity", ""))
+        self.af.setCurrentIndex(max(0, idx))
+        self.af.setToolTip("Fora do núcleo 0: o mais ocupado por drivers. Só P-cores: Intel híbrido, deixa o jogo "
+                           "fora dos E-cores. CCD com V-Cache: Ryzen X3D de dois CCDs. Só físicos: sem "
+                           "SMT/Hyper-Threading (frametime mais estável em alguns jogos, menos FPS em outros).")
         for w in (self.pr, self.af):
             w.currentIndexChanged.connect(self._save)
             row.addWidget(w)
@@ -135,7 +151,7 @@ class GameCard(Card):
     def _save(self):
         opts = settings.get("game_opts", {}) or {}
         opts[self.g.id] = {"priority": ["high", "above", "normal"][self.pr.currentIndex()],
-                           "affinity": ["", "skip0", "physical"][self.af.currentIndex()]}
+                           "affinity": self.af.currentData() or ""}
         settings.set("game_opts", opts)
 
     def _play(self):

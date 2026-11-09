@@ -92,6 +92,9 @@ class MainWindow(QMainWindow):
         self._tray()
         self.go("painel")
         self.register_hotkey()
+        if not settings.get("seen_analysis"):
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(900, self.first_run)
 
     # ---------------------------------------------------------------- navegação
     def go(self, key: str):
@@ -111,6 +114,26 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         theme.use(settings.get("theme"))
         QApplication.instance().setStyleSheet(theme.qss())
+
+    def first_run(self):
+        """Na primeira abertura: mostra a análise do PC e oferece o recomendado para ELE."""
+        from lolitos.ui.pages.dashboard import boost, pc_analysis
+        from lolitos.ui.theme import C
+        from lolitos.ui.widgets import TaskDialog, confirm, run_async
+
+        def show(r):
+            settings.set("seen_analysis", True)
+            p, adv, rec = r
+            html = (f"<h3>Análise do seu PC: {p.tier_name}</h3><p>" + "<br>".join(p.summary()) + "</p>"
+                    f"<p style='color:{C['muted']}'>{rec}</p>")
+            html += "".join(f"<p><b>{t}</b><br>{txt}</p>" for t, txt in adv)
+            html += ("<p>Aplicar agora os ajustes recomendados para este PC? Um ponto de restauração é criado antes "
+                     "e tudo pode ser desfeito em Restauração.</p>")
+            if confirm(self, "Bem-vindo ao Lolitos Otimizações", html, yes="Aplicar o recomendado",
+                       no="Agora não"):
+                TaskDialog(self, "Otimizando para este PC", boost,
+                           on_done=lambda _: self.changed()).exec()
+        run_async(pc_analysis, on_done=show)
 
     # ---------------------------------------------------------------- bandeja
     def _tray(self):

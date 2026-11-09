@@ -1,8 +1,8 @@
 """Placa de vídeo, monitor e rede."""
 from lolitos.core.actions import Interfaces, Power, Reg
-from lolitos.core.system import is_laptop
 from lolitos.core.tweaks import ADVANCED, ESSENTIAL, RECOMMENDED, Tweak, register
 from lolitos.modules import display
+from lolitos.modules import pcprofile as pc
 
 HKCU, HKLM = "HKCU", "HKLM"
 MM = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
@@ -14,7 +14,8 @@ register(
           "A placa de vídeo gerencia a própria fila de quadros (HAGS).",
           "gpu", [Reg(HKLM, r"SYSTEM\CurrentControlSet\Control\GraphicsDrivers", "HwSchMode", 2)],
           RECOMMENDED, restart=True, gain="Menos latência de quadro; necessário para o DLSS Frame Generation.",
-          loss="Em placas antigas (anteriores à GTX 10/RX 5000) pode piorar; desfaça se notar travadas."),
+          loss="Em placas antigas (anteriores à GTX 10/RX 5000) pode piorar; desfaça se notar travadas.",
+          when=pc.hags_ok),
     Tweak("mpo_off", "Desligar o Multiplane Overlay (MPO)",
           "Correção conhecida para tela piscando, cintilação e travadas com monitores de Hz diferentes.",
           "gpu", [Reg(HKLM, r"SOFTWARE\Microsoft\Windows\Dwm", "OverlayTestMode", 5)],
@@ -27,7 +28,7 @@ register(
     Tweak("nvidia_telemetry_off", "Desligar a telemetria do Painel de Controle NVIDIA",
           "O Painel de Controle NVIDIA deixa de enviar dados de uso.",
           "gpu", [Reg(HKCU, r"Software\NVIDIA Corporation\NVControlPanel2\Client", "OptInOrOutPreference", 0)],
-          ESSENTIAL),
+          ESSENTIAL, when=pc.nvidia),
 
     # ------------------------------------------------------------ rede
     Tweak("net_throttling_off", "Sem limite de pacotes de rede para multimídia",
@@ -45,7 +46,7 @@ register(
           "rede", [Power("19cbb8fa-5279-450e-9fac-8a3d5fedd0c1", "12bbebe6-58d6-4636-95bb-3217ef867c1a", 0,
                          label="economia do Wi-Fi")],
           RECOMMENDED, gain="Ping mais estável no Wi-Fi.", loss="Notebook na bateria gasta mais.",
-          when=lambda: not is_laptop()),
+          when=pc.wifi_desktop),
     Tweak("ipv4_first", "Preferir IPv4 ao IPv6",
           "O Windows usa IPv4 primeiro. Ajuda onde o IPv6 da operadora é mal configurado.",
           "rede", [Reg(HKLM, TCP6, "DisabledComponents", 0x20)], ADVANCED, restart=True,
