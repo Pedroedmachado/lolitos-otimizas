@@ -82,6 +82,22 @@ def relaunch_as_admin() -> bool:
     return rc > 32
 
 
+def relaunch_self() -> bool:
+    """Abre uma nova cópia do app (com a mesma elevação), que espera esta fechar."""
+    args = [a for a in sys.argv[1:] if a not in ("--restarted", "--tray")] + ["--restarted"]
+    if getattr(sys, "frozen", False):
+        cmd = [sys.executable, *args]
+    else:
+        cmd = [sys.executable, "-m", "lolitos", *args]
+    try:
+        flags = (0x00000008 | 0x00000200) if IS_WIN else 0   # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parents[2]) if not getattr(sys, "frozen", False)
+                         else None, creationflags=flags, close_fds=True)
+        return True
+    except OSError:
+        return False
+
+
 # ----------------------------------------------------------------- execução
 class CmdResult:
     def __init__(self, code: int, out: str, err: str):

@@ -1,14 +1,13 @@
-"""Configurações do app, antivírus e sobre."""
+"""Configurações do app, idioma e sobre."""
 import os
 
-from PySide6.QtWidgets import QCheckBox
+from PySide6.QtWidgets import QCheckBox, QComboBox
 
 from lolitos import APP_NAME, VERSION
 from lolitos.core import settings
 from lolitos.core.system import data_dir, resource_path
-from lolitos.modules import antivirus, startup
-from lolitos.ui.theme import C
-from lolitos.ui.widgets import Card, Page, button, hrow, info, label, run_async
+from lolitos.modules import startup
+from lolitos.ui.widgets import Card, Page, button, confirm, hrow, label, run_async
 
 
 class SettingsPage(Page):
@@ -17,6 +16,13 @@ class SettingsPage(Page):
     def build(self):
         c = Card()
         c.lay.addWidget(label("Aplicativo", "h2"))
+        from lolitos.i18n import LANGS, current
+        self.lang = QComboBox()
+        for code, name in LANGS.items():
+            self.lang.addItem(name, code)
+        self.lang.setCurrentIndex(list(LANGS).index(current()))
+        self.lang.currentIndexChanged.connect(self._lang)
+        c.lay.addLayout(hrow(label("Idioma / Language / Idioma", wrap=False), self.lang, None))
         dark = QCheckBox("Tema escuro")
         dark.setChecked(settings.get("theme") == "dark")
         dark.toggled.connect(lambda v: (settings.set("theme", "dark" if v else "light"), self.main.apply_theme()))
@@ -43,18 +49,6 @@ class SettingsPage(Page):
         c.lay.addLayout(hrow(button("Abrir pasta de dados", on_click=lambda: os.startfile(str(data_dir()))), None))
         self.body.addWidget(c)
 
-        av = Card()
-        av.lay.addWidget(label("Antivírus", "h2"))
-        av.lay.addWidget(label("Antivírus costumam bloquear mudanças no registro, serviços e tarefas, mesmo com o app "
-                               "como administrador. O app nunca desliga nem contorna a proteção: no máximo marca a "
-                               "si mesmo como confiável.", "muted"))
-        self.av_lbl = label("Lendo o antivírus…", rich=True)
-        av.lay.addWidget(self.av_lbl)
-        av.lay.addLayout(hrow(button("Liberar este app no Microsoft Defender", on_click=self._def_add),
-                              button("Remover a liberação", on_click=self._def_rm), None))
-        self.body.addWidget(av)
-        run_async(antivirus.products, on_done=self._av)
-
         ab = Card()
         ab.lay.addWidget(label(f"{APP_NAME} {VERSION}", "h2"))
         ab.lay.addWidget(label("Manutenção e otimização do Windows para jogos, com as ferramentas do próprio sistema "
@@ -67,24 +61,11 @@ class SettingsPage(Page):
             ab.lay.addLayout(hrow(button("Ver licença do WinUtil", on_click=lambda: os.startfile(str(lic))), None))
         self.body.addWidget(ab)
 
-    def _av(self, prods):
-        if not prods:
-            self.av_lbl.setText("Nenhum antivírus registrado na Central de Segurança do Windows.")
-            return
-        lines = []
-        for p in prods:
-            st = (f"<span style='color:{C['ok']}'>proteção em tempo real ligada</span>" if p["realtime"]
-                  else f"<span style='color:{C['warn']}'>tempo real desligado</span>")
-            g = "" if "defender" in p["name"].lower() else f"<br><span style='color:{C['muted']}'>Como liberar: " \
-                                                           f"{antivirus.guide_for(p['name'])}</span>"
-            lines.append(f"<b>{p['name']}</b> · {st}{g}")
-        lines.append(f"<span style='color:{C['muted']}'>Pasta do app: {antivirus.app_folder()}</span>")
-        self.av_lbl.setText("<br>".join(lines))
-
-    def _def_add(self):
-        ok, msg = antivirus.defender_add_app()
-        info(self, "Defender", "O Defender agora confia neste app." if ok else msg or "Não foi possível.")
-
-    def _def_rm(self):
-        ok, msg = antivirus.defender_remove_app()
-        info(self, "Defender", "Liberação removida." if ok else msg or "Não foi possível.")
+    def _lang(self):
+        code = self.lang.currentData()
+        settings.set("lang", code)
+        from lolitos.i18n import restart_text
+        if confirm(self, "Idioma", restart_text(code), yes="OK", no="Depois"):
+            from lolitos.core.system import relaunch_self
+            relaunch_self()
+            self.main.quit()

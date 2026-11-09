@@ -21,12 +21,16 @@ def main() -> int:
     from PySide6.QtWidgets import QApplication
 
     lock = QLockFile(str(data_dir() / "app.lock"))
-    if not lock.tryLock(100):
+    # reinício pedido pelo próprio app (troca de idioma): espera a janela antiga fechar
+    if not lock.tryLock(15000 if "--restarted" in sys.argv else 100):
         return 0         # já existe uma janela aberta
 
     if IS_WIN:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Lolitos.Control")
+
+    from lolitos import i18n
+    i18n.load()
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)

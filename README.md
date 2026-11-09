@@ -1,7 +1,7 @@
 # Lolitos Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.5.0.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.6.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,28 +13,48 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.5.0-Setup.exe`.
-O instalador tem assistente em português, termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.6.0-Setup.exe`.
+O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
 Dados do app (histórico, backups, perfis, config): `%LOCALAPPDATA%\LolitosControl`.
 
 ## O que tem
 
-| Tela | O que faz |
-|---|---|
-| **Painel** | Pontuação de otimização, **Boost em um clique** (ajustes recomendados pendentes + limpeza + RAM), check-up do PC, uso ao vivo |
-| **Black Desert** | Pacote de Windows para Guerra; prioridade alta permanente (IFEO), GPU dedicada, tela cheia sem FSO e exclusão no Defender para o `BlackDesert64.exe`; **predefinições do `GameOption.txt`** (Guerra/Cerco, PvP, Grind, AFK) com prévia, backup e editor; **latência real até o servidor** que o jogo está usando; resumo de **travamentos** (Dump) e limpeza segura de caches; checklist NVIDIA/in-game |
-| **Ajustes** | ~145 ajustes em 11 categorias (desempenho, jogos, mouse/teclado, GPU/monitor, rede, privacidade, sem IA, interface, atualizações, segurança, apps), cada um com ganho, contrapartida, estado lido do Windows e Desfazer |
-| **Debloat** | Apps pré-instalados, recursos opcionais do Windows e OneDrive |
-| **Jogos** | Detecta Steam, Epic, GOG, Ubisoft e jogos de EA app, Riot, Battle.net, Rockstar e outros; **Preparar e jogar** (libera RAM, plano de energia só durante a partida, prioridade/afinidade, overlay); **Otimizar este jogo**: prioridade alta permanente, GPU dedicada, tela cheia sem FSO e exclusão no Defender para o executável, observações do anti-cheat (~30 jogos conhecidos) e latência do servidor (jogos TCP) |
-| **Perfis** | Pacotes prontos (Básico, Jogos online competitivos, BDO Guerra, Competitivo, Equilibrado, PC modesto, Privacidade, Sem IA) + perfis próprios com exportar/importar |
-| **Limpeza** | Temporários, shaders, Windows Update, entrega, WER, dumps, navegadores, Discord, Lixeira — medindo antes; liberar RAM (working sets + standby) |
-| **Rede** | Teste de velocidade (Cloudflare) com bufferbloat, perda de pacotes a 20 pkt/s, **análise de rota salto a salto**, DNS/IP/Winsock |
-| **Ferramentas** | SFC, DISM, CHKDSK, reset do Windows Update, Explorer, áudio, Bluetooth, spooler, ícones, Store, driver de vídeo, .NET 3.5; inicialização; instalar apps pelo winget (catálogo WinUtil); teste de polling do mouse; teste de monitor (pixels, vazamento, ghosting) |
-| **Hardware** | CPU, RAM (XMP/EXPO, dual channel, slots), placa-mãe/BIOS, GPU (link PCIe via NVML), monitores, discos, TPM/Secure Boot; monitor ao vivo com gravação em CSV |
-| **Overlay** | FPS (via PresentMon), CPU/GPU, temperaturas, VRAM, RAM e ping por cima do jogo; tecla global |
-| **Restauração** | Histórico com desfazer item a item, reverter tudo, pontos de restauração |
+A barra lateral é dividida em quatro seções:
+
+| Seção | Tela | O que faz |
+|---|---|---|
+| Principal | **Painel** | Pontuação de otimização, **Boost em um clique**, uso ao vivo, atalhos e resumo do check-up |
+| | **Manutenção** | SFC, DISM, CHKDSK, reset do Windows Update, Explorer, áudio, Bluetooth, spooler, ícones, Store, driver de vídeo, .NET 3.5, rede |
+| | **Desempenho** | CPU, RAM, GPU, VRAM, temperaturas, disco e rede ao vivo, com mín./máx. e gravação em CSV |
+| | **Meu PC** | Perfil do PC, CPU, RAM (XMP/EXPO, dual channel), placa-mãe/BIOS, GPU (link PCIe), monitores, discos; **Copiar minha configuração** |
+| | **Black Desert** | Pacote de Windows para Guerra, `GameOption.txt` (Guerra/Cerco, PvP, Grind, AFK), latência real até o servidor, travamentos e caches |
+| Otimizar | **Formatação** | Windows recém-instalado pronto de uma vez: ponto de restauração, ajustes recomendados, debloat, programas e limpeza |
+| | **Debloat** | Apps pré-instalados, recursos opcionais do Windows e OneDrive |
+| | **Windows** | Ajustes em abas: desempenho, jogos, rede, privacidade, interface, atualizações, segurança, apps |
+| | **Mouse / Teclado / GPU** | Ajustes de cada assunto (aceleração do mouse, atalhos que atrapalham, agendamento da GPU, taxa do monitor) |
+| | **Perfis** | Pacotes prontos + perfis próprios com exportar/importar |
+| | **Jogos** | Detecta os jogos instalados; Preparar e jogar; Otimizar este jogo |
+| | **Instalar apps** | Centenas de programas pelo winget (catálogo WinUtil), por categoria, com atualizar todos |
+| | **Limpeza / Inicialização** | Temporários, caches e RAM; programas que abrem com o Windows |
+| Ferramentas | **Overlay de jogo** | FPS (PresentMon), CPU/GPU, temperaturas, VRAM, RAM e ping por cima do jogo |
+| | **Teste do mouse** | Polling rate real |
+| | **Teste de monitor** | Movimento/ghosting com faixas de quadros, cores e pixels, OLED e vazamento de luz |
+| | **Teste de velocidade** | Download, upload, ping, variação e bufferbloat (Cloudflare), com histórico |
+| | **Perda de pacotes** | Teste de 30 s ou 2 min, rota salto a salto, exportar CSV e reparos rápidos |
+| | **Comparar placas** | Índice próprio de desempenho em jogos de ~95 placas, com a sua destacada |
+| | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
+| | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
+| Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 1.6.0
+
+* Barra lateral reorganizada em **Principal, Otimizar, Ferramentas e Sistema**, com telas separadas por assunto.
+* **Idiomas:** português, inglês e espanhol (Configurações › Idioma). O instalador também pergunta o idioma.
+* Ferramentas novas ou ampliadas: Formatação, Comparar placas, Check-up com relatório, Teste de velocidade com
+  histórico, Perda de pacotes com teste de 2 minutos e CSV, teste de monitor com objetos, cores e faixas de quadros,
+  Instalar apps com categorias e "atualizar todos".
 
 ## Novidades da 1.5.0
 

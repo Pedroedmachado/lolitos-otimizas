@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMainWindow, QMenu,
-                               QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
+                               QPushButton, QScrollArea, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
 
 from lolitos import APP_NAME, VERSION
 from lolitos.core import settings
@@ -18,28 +18,49 @@ from lolitos.ui.widgets import label
 
 
 def _pages():
+    """Seções da barra lateral: (título da seção, [(chave, texto, classe)])."""
+    from lolitos.ui.pages.apps_page import AppsPage
     from lolitos.ui.pages.bdo_page import BdoPage
     from lolitos.ui.pages.cleanup_page import CleanupPage
     from lolitos.ui.pages.dashboard import Dashboard
     from lolitos.ui.pages.debloat_page import DebloatPage
     from lolitos.ui.pages.games_page import GamesPage
-    from lolitos.ui.pages.hardware_page import HardwarePage
-    from lolitos.ui.pages.network_page import NetworkPage
+    from lolitos.ui.pages.hardware_page import MyPcPage, PerformancePage
+    from lolitos.ui.pages.maintenance_page import MaintenancePage
+    from lolitos.ui.pages.opt_pages import (DefenderAiPage, FreshPage, GpuComparePage, GpuPage, KeyboardPage,
+                                            MousePage, WindowsPage)
     from lolitos.ui.pages.overlay_page import OverlayPage
     from lolitos.ui.pages.profiles_page import ProfilesPage
     from lolitos.ui.pages.restore_page import RestorePage
     from lolitos.ui.pages.settings_page import SettingsPage
-    from lolitos.ui.pages.tools_page import ToolsPage
-    from lolitos.ui.pages.tweaks_page import TweaksPage
+    from lolitos.ui.pages.startup_page import StartupPage
+    from lolitos.ui.pages.tools_pages import (CheckupPage, MonitorTestPage, MouseTestPage, PacketLossPage,
+                                              SpeedTestPage)
     return [
-        ("painel", "⌂  Painel", Dashboard), ("jogos", "🎮  Jogos", GamesPage),
-        ("bdo", "⚔  Black Desert", BdoPage), ("ajustes", "⚙  Ajustes", TweaksPage),
-        ("debloat", "✂  Debloat", DebloatPage), ("perfis", "★  Perfis", ProfilesPage),
-        ("limpeza", "🧹  Limpeza", CleanupPage), ("rede", "📶  Rede", NetworkPage),
-        ("ferramentas", "🛠  Ferramentas", ToolsPage), ("hardware", "🖥  Hardware", HardwarePage),
-        ("overlay", "◱  Overlay", OverlayPage), ("restauracao", "↺  Restauração", RestorePage),
-        ("config", "☰  Configurações", SettingsPage),
+        ("PRINCIPAL", [
+            ("painel", "⌂  Painel", Dashboard), ("manutencao", "🧰  Manutenção", MaintenancePage),
+            ("desempenho", "📈  Desempenho", PerformancePage), ("meupc", "🖥  Meu PC", MyPcPage),
+            ("bdo", "⚔  Black Desert", BdoPage)]),
+        ("OTIMIZAR", [
+            ("formatacao", "💿  Formatação", FreshPage), ("debloat", "✂  Debloat", DebloatPage),
+            ("windows", "⊞  Windows", WindowsPage), ("mouse", "🖱  Mouse", MousePage),
+            ("teclado", "⌨  Teclado", KeyboardPage), ("gpu", "🎨  GPU", GpuPage),
+            ("perfis", "★  Perfis", ProfilesPage), ("jogos", "🎮  Jogos", GamesPage),
+            ("apps", "📦  Instalar apps", AppsPage), ("limpeza", "🧹  Limpeza", CleanupPage),
+            ("inicializacao", "🚀  Inicialização", StartupPage)]),
+        ("FERRAMENTAS", [
+            ("overlay", "◱  Overlay de jogo", OverlayPage), ("teste_mouse", "🎯  Teste do mouse", MouseTestPage),
+            ("teste_monitor", "🖵  Teste de monitor", MonitorTestPage),
+            ("velocidade", "📶  Teste de velocidade", SpeedTestPage), ("perda", "📉  Perda de pacotes", PacketLossPage),
+            ("comparar", "⚖  Comparar placas", GpuComparePage), ("defender", "🛡  Defender e IA", DefenderAiPage),
+            ("checkup", "✔  Check-up", CheckupPage)]),
+        ("SISTEMA", [
+            ("restauracao", "↺  Restauração", RestorePage), ("config", "☰  Configurações", SettingsPage)]),
     ]
+
+
+# nomes antigos (atalhos, bandeja, versões anteriores) → telas novas
+ALIASES = {"ajustes": "windows", "hardware": "meupc", "ferramentas": "manutencao", "rede": "perda"}
 
 
 class MainWindow(QMainWindow):
@@ -66,21 +87,38 @@ class MainWindow(QMainWindow):
         sl.setSpacing(3)
         sl.addWidget(label("Lolitos Control", "brand"))
         sl.addWidget(label("Otimização para jogos", "brandsub"))
-        sl.addSpacing(14)
+        sl.addSpacing(10)
         self.stack = QStackedWidget()
         self.group = QButtonGroup(self)
         self.index = {}
-        for i, (key, text, cls) in enumerate(_pages()):
-            b = QPushButton(text)
-            b.setObjectName("nav")
-            b.setCheckable(True)
-            b.setCursor(Qt.PointingHandCursor)
-            b.clicked.connect(lambda _=False, k=key: self.go(k))
-            self.group.addButton(b, i)
-            sl.addWidget(b)
-            self.stack.addWidget(cls(self))
-            self.index[key] = i
-        sl.addStretch()
+        nav_scroll = QScrollArea()
+        nav_scroll.setObjectName("navscroll")
+        nav_scroll.setWidgetResizable(True)
+        nav_scroll.setFrameShape(QFrame.NoFrame)
+        nav_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        nav_w = QWidget()
+        nav_w.setObjectName("navlist")
+        nl = QVBoxLayout(nav_w)
+        nl.setContentsMargins(0, 0, 4, 0)
+        nl.setSpacing(2)
+        i = 0
+        for section, items in _pages():
+            nl.addSpacing(6 if i else 0)
+            nl.addWidget(label(section, "navsec"))
+            for key, text, cls in items:
+                b = QPushButton(text)
+                b.setObjectName("nav")
+                b.setCheckable(True)
+                b.setCursor(Qt.PointingHandCursor)
+                b.clicked.connect(lambda _=False, k=key: self.go(k))
+                self.group.addButton(b, i)
+                nl.addWidget(b)
+                self.stack.addWidget(cls(self))
+                self.index[key] = i
+                i += 1
+        nl.addStretch()
+        nav_scroll.setWidget(nav_w)
+        sl.addWidget(nav_scroll, 1)
         self.update_btn = QPushButton("⟳  Procurar atualização")
         self.update_btn.setObjectName("nav")
         self.update_btn.setCursor(Qt.PointingHandCursor)
@@ -91,6 +129,8 @@ class MainWindow(QMainWindow):
         lay.addWidget(side)
         lay.addWidget(self.stack, 1)
 
+        from lolitos.i18n import translate_tree
+        translate_tree(side)
         self.overlay = Overlay()
         self._overlay_auto = False
         self._tray()
@@ -109,7 +149,7 @@ class MainWindow(QMainWindow):
     def go(self, key: str, bring: bool = False):
         """Troca de tela. Só traz a janela para frente quando pedido (bandeja/atalhos) — reativar a janela
         a cada clique fazia o Windows piscar."""
-        i = self.index.get(key, 0)
+        i = self.index.get(ALIASES.get(key, key), 0)
         page = self.stack.widget(i)
         if hasattr(page, "ensure_built"):
             page.ensure_built()

@@ -13,7 +13,8 @@
    mesmas funções do Gerenciador de Tarefas.
 
 4. Tudo roda localmente. O app só acessa a internet quando você pede (instalar apps
-   pelo winget, teste de velocidade, testes de rede).
+   pelo winget, teste de velocidade, testes de rede) e para procurar atualização no
+   GitHub (dá para desligar nas Configurações).
 
 5. O software é fornecido "como está", sem garantia de qualquer tipo. Use os itens
    marcados como "avançado" sabendo da contrapartida mostrada em cada um.

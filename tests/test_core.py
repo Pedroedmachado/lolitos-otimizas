@@ -157,3 +157,37 @@ if __name__ == "__main__":
         if name.startswith("test_"):
             fn()
             print("ok", name)
+
+
+def test_i18n_templates():
+    from lolitos import i18n
+    try:
+        i18n.set_table("en", {"Fechar": "Close", "Desempenho": "Performance",
+                              "{} app(s) instalados.": "{} app(s) installed.",
+                              "<b>{}</b> · perda {}%": "<b>{}</b> · loss {}%",
+                              "Uso de {}": "{} usage"})
+        assert i18n.tr("Fechar") == "Close"
+        assert i18n.tr("  Fechar\n") == "  Close\n"
+        assert i18n.tr("12 app(s) instalados.") == "12 app(s) installed."
+        assert i18n.tr("<b>1.1.1.1</b> · perda 2.5%") == "<b>1.1.1.1</b> · loss 2.5%"
+        assert i18n.tr("Uso de Desempenho") == "Performance usage"      # valor traduzido também
+        assert i18n.tr("Fechar<br>Desempenho") == "Close<br>Performance"
+        assert i18n.tr("sem tradução") == "sem tradução"
+    finally:
+        i18n.set_table("pt", {})
+    assert i18n.tr("Fechar") == "Fechar"
+
+
+def test_i18n_files_consistent():
+    import json
+    import re
+    from lolitos.core.system import resource_path
+    ph = re.compile(r"(?<!\{)\{\}(?!\})")
+    for lang in ("en", "es"):
+        f = resource_path("i18n", f"{lang}.json")
+        if not f.exists():
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        for k, v in data.items():
+            assert len(ph.findall(k)) == len(ph.findall(v)), (lang, k, v)
+            assert re.findall(r"<[^>]+>", k) == re.findall(r"<[^>]+>", v), (lang, k, v)

@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal, Slot
 from PySide6.QtWidgets import (QCheckBox, QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
+from lolitos.i18n import tr, translate_tree
 from lolitos.ui.theme import C
 
 
@@ -100,6 +101,7 @@ class TaskDialog(QDialog):
 
     def __init__(self, parent, title: str, fn, *args, intro: str = "", on_done=None, **kwargs):
         super().__init__(parent)
+        title, intro = tr(title), tr(intro)
         self.setWindowTitle(title)
         self.resize(640, 420)
         self.result_value = None
@@ -120,7 +122,7 @@ class TaskDialog(QDialog):
         lay.addWidget(self.log, 1)
         row = QHBoxLayout()
         row.addStretch()
-        self.btn = QPushButton("Fechar")
+        self.btn = QPushButton(tr("Fechar"))
         self.btn.setEnabled(False)
         self.btn.clicked.connect(self.accept)
         row.addWidget(self.btn)
@@ -129,7 +131,7 @@ class TaskDialog(QDialog):
         run_async(fn, *args, on_done=self._done, on_error=self._err, on_progress=self.add, **kwargs)
 
     def add(self, s):
-        self.log.appendPlainText(str(s))
+        self.log.appendPlainText(tr(str(s)))
 
     def _done(self, res):
         self.result_value = res
@@ -137,14 +139,14 @@ class TaskDialog(QDialog):
         self.bar.setValue(1)
         if isinstance(res, str) and res:
             self.add("\n" + res)
-        self.add("\nConcluído. Clique em Fechar.")
+        self.add("\n" + tr("Concluído. Clique em Fechar."))
         self.btn.setEnabled(True)
         if self._on_done:
             self._on_done(res)
 
     def _err(self, msg):
         self.bar.setRange(0, 1)
-        self.add(f"\nErro: {msg}")
+        self.add("\n" + tr("Erro: {}").replace("{}", str(msg)))
         self.btn.setEnabled(True)
 
     def reject(self):
@@ -154,7 +156,7 @@ class TaskDialog(QDialog):
 
 # ===================================================================== blocos visuais
 def label(text: str = "", obj: str = "", wrap: bool = True, rich: bool = False) -> QLabel:
-    lb = QLabel(text)
+    lb = QLabel(tr(text))
     if obj:
         lb.setObjectName(obj)
     lb.setWordWrap(wrap)
@@ -164,7 +166,7 @@ def label(text: str = "", obj: str = "", wrap: bool = True, rich: bool = False) 
 
 
 def button(text: str, kind: str = "", on_click=None, tip: str = "") -> QPushButton:
-    b = QPushButton(text)
+    b = QPushButton(tr(text))
     if kind:
         b.setObjectName(kind)
     b.setCursor(Qt.PointingHandCursor)
@@ -242,6 +244,7 @@ class Page(QWidget):
         try:
             self.build()
             self.body.addStretch()
+            translate_tree(self)
         finally:
             self.setUpdatesEnabled(True)
 
@@ -272,17 +275,17 @@ def hrow(*widgets, stretch_first=False, spacing=8) -> QHBoxLayout:
 
 def confirm(parent, title: str, text: str, yes: str = "Sim", no: str = "Cancelar") -> bool:
     box = QMessageBox(parent)
-    box.setWindowTitle(title)
-    box.setText(text)
+    box.setWindowTitle(tr(title))
+    box.setText(tr(text))
     box.setTextFormat(Qt.RichText)
-    y = box.addButton(yes, QMessageBox.AcceptRole)
-    box.addButton(no, QMessageBox.RejectRole)
+    y = box.addButton(tr(yes), QMessageBox.AcceptRole)
+    box.addButton(tr(no), QMessageBox.RejectRole)
     box.exec()
     return box.clickedButton() is y
 
 
 def info(parent, title: str, text: str):
-    QMessageBox.information(parent, title, text)
+    QMessageBox.information(parent, tr(title), tr(text))
 
 
 # ===================================================================== linha de ajuste
@@ -311,15 +314,16 @@ class TweakRow(QFrame):
             tags.append(f"<span style='color:{C['muted']}'>reinicie para valer</span>")
         if not tweak.reversible:
             tags.append(f"<span style='color:{C['bad']}'>sem desfazer</span>")
-        title = label(f"<b>{tweak.title}</b> &nbsp; <span style='font-size:8.5pt'>{' · '.join(tags)}</span>",
+        tags = [tr(t) for t in tags]
+        title = label(f"<b>{tr(tweak.title)}</b> &nbsp; <span style='font-size:8.5pt'>{' · '.join(tags)}</span>",
                       rich=True)
         col.addWidget(title)
         col.addWidget(label(tweak.desc, "muted"))
         extra = []
         if tweak.gain:
-            extra.append(f"<span style='color:{C['ok']}'>+ {tweak.gain}</span>")
+            extra.append(f"<span style='color:{C['ok']}'>+ {tr(tweak.gain)}</span>")
         if tweak.loss:
-            extra.append(f"<span style='color:{C['warn']}'>− {tweak.loss}</span>")
+            extra.append(f"<span style='color:{C['warn']}'>− {tr(tweak.loss)}</span>")
         if extra:
             col.addWidget(label("<br>".join(extra), rich=True))
         lay.addLayout(col, 1)

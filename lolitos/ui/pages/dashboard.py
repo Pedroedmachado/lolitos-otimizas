@@ -15,8 +15,11 @@ from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import bulk_apply
 from lolitos.ui.widgets import Badge, Card, Page, TaskDialog, button, hrow, label, run_async
 
-FIX_PAGE = {"cleanup": "limpeza", "startup": "ferramentas", "antivirus": "config", "restore_point": "restauracao",
-            "refresh_max": "ajustes", "bios": "hardware", "reboot": "restauracao"}
+FIX_PAGE = {"cleanup": "limpeza", "startup": "inicializacao", "antivirus": "defender", "restore_point": "restauracao",
+            "refresh_max": "gpu", "bios": "meupc", "reboot": "restauracao"}
+SHORTCUTS = [("🧰  Manutenção", "manutencao"), ("🧹  Limpeza", "limpeza"), ("💿  Formatação", "formatacao"),
+             ("📶  Teste de velocidade", "velocidade"), ("📉  Perda de pacotes", "perda"),
+             ("🖱  Teste do mouse", "teste_mouse")]
 
 
 def boost(progress=None):
@@ -113,7 +116,17 @@ class Dashboard(Page):
         self.body.addWidget(self.pc_card)
         run_async(pc_analysis, on_done=self._pc)
 
-        self.body.addWidget(label("Check-up do PC", "h2"))
+        # atalhos
+        sc_grid = QGridLayout()
+        sc_grid.setSpacing(10)
+        for i, (txt, key) in enumerate(SHORTCUTS):
+            b = button(txt, on_click=lambda _=False, k=key: self.main.go(k))
+            b.setMinimumHeight(40)
+            sc_grid.addWidget(b, i // 3, i % 3)
+        self.body.addLayout(sc_grid)
+
+        self.body.addLayout(hrow(label("Check-up do PC", "h2"),
+                                 button("Ver check-up completo", on_click=lambda: self.main.go("checkup")), None))
         self.checks_box = QVBoxLayout()
         self.body.addLayout(self.checks_box)
         self.timer = QTimer(self)
@@ -145,7 +158,13 @@ class Dashboard(Page):
             if w:
                 w.deleteLater()
         order = {"corrigir": 0, "atencao": 1, "ok": 2}
-        for c in sorted(checks, key=lambda c: order[c.state]):
+        bad = [c for c in sorted(checks, key=lambda c: order[c.state]) if c.state != "ok"]
+        if not bad:
+            self.checks_box.addWidget(label(f"<span style='color:{C['ok']}'>Todos os {len(checks)} itens do check-up "
+                                            "estão corretos.</span>", rich=True))
+        elif len(bad) > 4:
+            self.checks_box.addWidget(label(f"Mostrando 4 de {len(bad)} itens que pedem atenção.", "muted"))
+        for c in bad[:4]:
             card = Card()
             row = QHBoxLayout()
             col = QVBoxLayout()

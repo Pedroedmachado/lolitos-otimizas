@@ -1,10 +1,11 @@
-"""Hardware: tudo lido do Windows + monitor ao vivo com gravação em CSV."""
+"""Meu PC (componentes lidos do Windows) e Desempenho (monitor ao vivo com gravação em CSV)."""
 import csv
+import re
 import time
 
 import psutil
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QFileDialog, QGridLayout, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFileDialog, QGridLayout, QVBoxLayout, QWidget
 
 from lolitos.core.system import human_size
 from lolitos.modules import display, gpu, hwinfo, sensors
@@ -18,20 +19,44 @@ def kv(rows):
         (None, "")) + "</table>"
 
 
-class HardwarePage(Page):
-    title = "Hardware"
-    subtitle = "Tudo sobre o hardware deste PC, lido direto do Windows. Nada é alterado aqui."
+class MyPcPage(Page):
+    title = "Meu PC"
+    subtitle = "Tudo sobre o hardware deste PC, lido direto do Windows, e o perfil que o app usa para escolher os ajustes."
 
     def build(self):
-        tabs = QTabWidget()
+        self.prof = label("Analisando o PC…", "muted", rich=True)
+        pc = Card(hero=True)
+        pc.lay.addWidget(label("Perfil deste PC", "h2"))
+        pc.lay.addWidget(self.prof)
+        pc.lay.addLayout(hrow(button("Copiar minha configuração", on_click=self._copy),
+                              button("Check-up completo", on_click=lambda: self.main.go("checkup")), None))
+        self.body.addWidget(pc)
         self.info_w = QWidget()
         self.info_l = QVBoxLayout(self.info_w)
-        self.info_l.setContentsMargins(0, 12, 0, 0)
+        self.info_l.setContentsMargins(0, 0, 0, 0)
         self.info_l.addWidget(label("Lendo o hardware…", "muted"))
-        tabs.addTab(self.info_w, "Componentes")
-        tabs.addTab(self._live(), "Monitor ao vivo")
-        self.body.addWidget(tabs)
+        self.body.addWidget(self.info_w)
+        self._text = ""
+        from lolitos.ui.pages.dashboard import pc_analysis
+        run_async(pc_analysis, on_done=self._prof)
         run_async(hwinfo.read_all, on_done=self._show)
+
+    def _prof(self, r):
+        p, adv, rec = r
+        self._text = "\n".join([f"Perfil: {p.tier_name}", *p.summary()])
+        lines = [f"<b style='color:{C['accent2']}'>{p.tier_name}</b>", *p.summary(),
+                 f"<span style='color:{C['muted']}'>{rec}</span>"]
+        lines += [f"<b>{t}</b> — <span style='color:{C['muted']}'>{txt}</span>" for t, txt in adv]
+        self.prof.setText("<br>".join(lines))
+
+    def _copy(self):
+        from PySide6.QtGui import QGuiApplication
+
+        from lolitos import APP_NAME, VERSION
+        from lolitos.ui.widgets import info
+        QGuiApplication.clipboard().setText(f"{APP_NAME} {VERSION} — meu PC\n" + (self._text or "") +
+                                            ("\n\n" + self._plain if getattr(self, "_plain", "") else ""))
+        info(self, "Copiado", "Configuração copiada. Agora é só colar (WhatsApp, Discord, fórum).")
 
     def _show(self, d):
         while self.info_l.count():
@@ -99,6 +124,8 @@ class HardwarePage(Page):
         os_ = d.get("os") or {}
         cards.append(("Sistema", kv([("Windows", f"{os_.get('Caption', '')} (build {os_.get('BuildNumber', '')})"),
                                      ("Antivírus", ", ".join(a.get("displayName", "") for a in d.get("av", [])))])))
+        self._plain = "\n".join(f"{t}: " + re.sub(r"<[^>]+>", " ", h.replace("</tr>", " | ")).strip()
+                                for t, h in cards)
         for i, (t, html) in enumerate(cards):
             c = Card()
             c.lay.addWidget(label(t, "h2"))
@@ -107,11 +134,13 @@ class HardwarePage(Page):
         self.info_l.addLayout(grid)
         self.info_l.addStretch()
 
-    # ---------------------------------------------------------------- monitor ao vivo
-    def _live(self):
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.setContentsMargins(0, 12, 0, 0)
+
+class PerformancePage(Page):
+    title = "Desempenho"
+    subtitle = ""
+
+    def build(self):
+        lay = self.body
         lay.addWidget(label("Processador, memória, placa de vídeo, disco e rede ao vivo, com mínimo e máximo desde "
                             "que a tela foi aberta. Compare antes e depois de aplicar.", "muted"))
         self.rec_btn = button("Gravar em CSV…", on_click=self._rec)
@@ -126,7 +155,6 @@ class HardwarePage(Page):
         t = QTimer(self)
         t.timeout.connect(self._tick)
         t.start(1000)
-        return w
 
     def _reset(self):
         self.mm = {}

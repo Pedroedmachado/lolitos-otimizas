@@ -1,0 +1,25 @@
+﻿LOLITOS CONTROL — TÉRMINOS DE USO
+
+1. Lolitos Control cambia configuraciones de Windows (registro, servicios, tareas
+   programadas, plan de energía) y el archivo de opciones de Black Desert Online
+   (GameOption.txt) solo cuando tú lo indicas.
+
+2. Cada ajuste guarda el valor anterior y se puede deshacer en la pantalla
+   Restauración. Antes de aplicar ajustes en lote, la app crea (o reutiliza) un
+   punto de restauración de Windows. GameOption.txt siempre se respalda antes de
+   modificarse.
+
+3. La app no inyecta código en juegos, no lee la memoria de ningún juego y no evade
+   antivirus ni anti-cheat. La prioridad y la afinidad de procesos se definen con
+   las mismas funciones que usa el Administrador de tareas.
+
+4. Todo se ejecuta localmente. La app solo usa internet cuando tú lo pides
+   (instalar apps con winget, test de velocidad, pruebas de red) y para buscar
+   actualizaciones en GitHub (se puede desactivar en Configuración).
+
+5. El software se entrega "tal cual", sin garantía de ningún tipo. Usa los
+   elementos marcados como "avanzado" conociendo la contrapartida indicada en cada
+   uno.
+
+6. Componentes de terceros: catálogo de apps del proyecto WinUtil (Chris Titus Tech,
+   licencia MIT); PresentMon de Intel (licencia MIT), opcional y descargado aparte.

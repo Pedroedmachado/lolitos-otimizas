@@ -1,0 +1,575 @@
+{
+"_sobre": "Índice próprio do Lolitos Control: desempenho relativo em jogos, 1080p qualidade ultra, RTX 5090 = 100. Compilado de resultados públicos (Tom's Hardware, GPU Benchmarks Hierarchy, 2026); placas de gerações anteriores convertidas para a mesma escala por interpolação entre placas presentes nos dois levantamentos. Valores aproximados.",
+"gpus": [
+{
+"name": "GeForce RTX 5090",
+"score": 100.0,
+"score1440": 100.0,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4090",
+"score": 90.1,
+"score1440": 85.7,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5080",
+"score": 81.9,
+"score1440": 76.7,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7900 XTX",
+"score": 79.3,
+"score1440": 73.1,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4080 Super",
+"score": 78.0,
+"score1440": 70.9,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4080",
+"score": 77.2,
+"score1440": 70.3,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 9070 XT",
+"score": 76.9,
+"score1440": 69.7,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5070 Ti",
+"score": 76.2,
+"score1440": 69.8,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7900 XT",
+"score": 71.3,
+"score1440": 64.6,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4070 Ti Super",
+"score": 69.3,
+"score1440": 62.1,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 9070",
+"score": 69.1,
+"score1440": 62.1,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4070 Ti",
+"score": 66.3,
+"score1440": 58.6,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5070",
+"score": 65.1,
+"score1440": 57.6,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3090 Ti",
+"score": 64.7,
+"score1440": 59.7,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7900 GRE",
+"score": 63.7,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 4070 Super",
+"score": 62.2,
+"score1440": 54.5,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6950 XT",
+"score": 60.5,
+"score1440": 53.5,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3090",
+"score": 60.3,
+"score1440": 54.7,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 9070 GRE",
+"score": 59.2,
+"score1440": 51.8,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3080 Ti",
+"score": 58.7,
+"score1440": 53.3,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7800 XT",
+"score": 58.1,
+"score1440": 50.7,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6900 XT",
+"score": 57.4,
+"score1440": 50.2,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6800 XT",
+"score": 54.9,
+"score1440": 47.6,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3080 12GB",
+"score": 54.9,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 3080",
+"score": 54.8,
+"score1440": 49.0,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4070",
+"score": 54.7,
+"score1440": 46.5,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5060 Ti 16GB",
+"score": 51.6,
+"score1440": 43.9,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7700 XT",
+"score": 50.5,
+"score1440": 43.4,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 7600 XT",
+"score": 50.1,
+"score1440": 30.0,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6800",
+"score": 50.0,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 5060 Ti 8GB",
+"score": 49.3,
+"score1440": 41.0,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 9060 XT 16GB",
+"score": 48.2,
+"score1440": 40.2,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3070 Ti",
+"score": 46.4,
+"score1440": 40.0,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 9060 XT 8GB",
+"score": 45.7,
+"score1440": 37.3,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4060 Ti 16GB",
+"score": 43.8,
+"score1440": 36.2,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5060",
+"score": 43.4,
+"score1440": 35.8,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4060 Ti 8GB",
+"score": 43.2,
+"score1440": 35.2,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3070",
+"score": 42.8,
+"score1440": 34.8,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6750 XT",
+"score": 40.8,
+"score1440": 34.4,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 2080 Ti",
+"score": 40.8,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Titan RTX",
+"score": 39.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 6700 XT",
+"score": 38.9,
+"score1440": 32.5,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 3060 Ti",
+"score": 36.4,
+"score1440": 30.5,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6700 10GB",
+"score": 35.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 2080 Super",
+"score": 35.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Intel Arc B580",
+"score": 35.1,
+"score1440": 30.3,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 4060",
+"score": 35.1,
+"score1440": 28.4,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 2080",
+"score": 34.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 7600",
+"score": 34.3,
+"score1440": 27.2,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 5050",
+"score": 34.0,
+"score1440": 27.1,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 6650 XT",
+"score": 31.5,
+"score1440": 22.7,
+"gen": "atual"
+},
+{
+"name": "GeForce RTX 2070 Super",
+"score": 31.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Intel Arc A770 16GB",
+"score": 31.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Intel Arc B570",
+"score": 31.1,
+"score1440": 26.5,
+"gen": "atual"
+},
+{
+"name": "Intel Arc A770 8GB",
+"score": 30.9,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 6600 XT",
+"score": 30.8,
+"score1440": 24.3,
+"gen": "atual"
+},
+{
+"name": "Radeon RX 5700 XT",
+"score": 30.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 3060 12GB",
+"score": 30.2,
+"score1440": 25.0,
+"gen": "atual"
+},
+{
+"name": "Intel Arc A750",
+"score": 29.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 2070",
+"score": 28.6,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon VII",
+"score": 28.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1080 Ti",
+"score": 26.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 2060 Super",
+"score": 25.7,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 6600",
+"score": 25.5,
+"score1440": 14.9,
+"gen": "atual"
+},
+{
+"name": "Intel Arc A580",
+"score": 25.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 5700",
+"score": 25.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 5600 XT",
+"score": 23.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX Vega 64",
+"score": 23.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 2060",
+"score": 22.9,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1080",
+"score": 22.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce RTX 3050",
+"score": 21.9,
+"score1440": 17.8,
+"gen": "atual"
+},
+{
+"name": "GeForce GTX 1070 Ti",
+"score": 21.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX Vega 56",
+"score": 21.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1660 Super",
+"score": 19.7,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1660 Ti",
+"score": 19.7,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1070",
+"score": 18.8,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1660",
+"score": 18.0,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 5500 XT 8GB",
+"score": 16.7,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 590",
+"score": 16.6,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 980 Ti",
+"score": 15.1,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 580 8GB",
+"score": 14.9,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1650 Super",
+"score": 14.3,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 5500 XT 4GB",
+"score": 14.0,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1060 6GB",
+"score": 13.5,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 6500 XT",
+"score": 12.9,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 980",
+"score": 12.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1650 GDDR6",
+"score": 12.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Intel Arc A380",
+"score": 12.0,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 570 4GB",
+"score": 11.8,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1650",
+"score": 11.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 970",
+"score": 11.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 6400",
+"score": 10.2,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1050 Ti",
+"score": 8.4,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "GeForce GTX 1630",
+"score": 7.1,
+"score1440": null,
+"gen": "anterior"
+},
+{
+"name": "Radeon RX 560 4GB",
+"score": 6.2,
+"score1440": null,
+"gen": "anterior"
+}
+]
+}

@@ -45,9 +45,13 @@ QScrollBar::handle:horizontal:hover {{ background: {c['accent']}; }}
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: none; border: none; }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ height: 0; width: 0; border: none; background: none; }}
 
+QLabel#navsec {{ color: {c['muted']}; font-size: 7.5pt; font-weight: 800; letter-spacing: 1px;
+    padding: 8px 14px 2px 14px; }}
+QWidget#navlist, QScrollArea#navscroll, QScrollArea#navscroll > QWidget#qt_scrollarea_viewport {{
+    background: {c['panel']}; }}
 QFrame#sidebar {{ background: {c['panel']}; border-right: 1px solid {c['border']}; }}
-QPushButton#nav {{ text-align: left; padding: 9px 14px; border: none; border-radius: 8px; background: transparent;
-                  color: {c['muted']}; font-size: 10.5pt; }}
+QPushButton#nav {{ text-align: left; padding: 7px 14px; border: none; border-radius: 8px; background: transparent;
+                  color: {c['muted']}; font-size: 10pt; }}
 QPushButton#nav:hover {{ background: {c['panel2']}; color: {c['text']}; }}
 QPushButton#nav:checked {{ background: {c['panel2']}; color: {c['accent2']}; font-weight: 600;
                           border-left: 3px solid {c['accent']}; }}

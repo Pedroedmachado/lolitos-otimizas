@@ -1,0 +1,23 @@
+﻿LOLITOS CONTROL — TERMS OF USE
+
+1. Lolitos Control changes Windows settings (registry, services, scheduled tasks,
+   power plan) and the Black Desert Online options file (GameOption.txt) only when
+   you tell it to.
+
+2. Every tweak keeps the previous value and can be undone on the Restore screen.
+   Before applying tweaks in bulk, the app creates (or reuses) a Windows restore
+   point. GameOption.txt is always backed up before it is changed.
+
+3. The app does not inject code into games, does not read any game's memory and
+   does not bypass antivirus or anti-cheat software. Process priority and affinity
+   are set with the same functions Task Manager uses.
+
+4. Everything runs locally. The app only goes online when you ask it to (installing
+   apps with winget, speed test, network tests) and to check GitHub for updates
+   (this can be turned off in Settings).
+
+5. The software is provided "as is", without warranty of any kind. Use the items
+   marked "advanced" knowing the trade-off shown on each one.
+
+6. Third-party components: app catalog from the WinUtil project (Chris Titus Tech,
+   MIT license); Intel PresentMon (MIT license), optional and downloaded separately.
