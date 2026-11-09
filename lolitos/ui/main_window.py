@@ -47,6 +47,8 @@ def _pages():
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        from lolitos.ui.widgets import init_ui_thread
+        init_ui_thread()
         self.setWindowTitle(f"{APP_NAME} {VERSION}" + ("" if is_admin() else "  (sem administrador)"))
         self.setWindowIcon(icon())
         self.resize(1240, 820)
@@ -96,8 +98,12 @@ class MainWindow(QMainWindow):
         i = self.index.get(key, 0)
         self.stack.setCurrentIndex(i)
         self.group.button(i).setChecked(True)
-        self.showNormal()
+        if self.isMinimized():
+            self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
+        if not self.isVisible():
+            self.show()
         self.raise_()
+        self.activateWindow()
 
     def changed(self):
         settings.set("dirty", True)

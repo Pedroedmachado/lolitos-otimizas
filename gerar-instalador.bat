@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title Lolitos Otimizações - gerando o instalador
 rem =====================================================================
-rem  Gera dist\LolitosOtimizacoes-1.2.0-Setup.exe com dois cliques.
+rem  Gera dist\LolitosOtimizacoes-1.2.1-Setup.exe com dois cliques.
 rem  Instala sozinho (pelo winget) o que faltar: Python 3.12 e Inno Setup 6.
 rem =====================================================================
 setlocal EnableDelayedExpansion
@@ -71,9 +71,9 @@ echo  [5/5] Montando o instalador...
 
 echo.
 echo  =====================================================================
-echo   PRONTO:  dist\LolitosOtimizacoes-1.2.0-Setup.exe
+echo   PRONTO:  dist\LolitosOtimizacoes-1.2.1-Setup.exe
 echo  =====================================================================
-explorer /select,"%~dp0dist\LolitosOtimizacoes-1.2.0-Setup.exe"
+explorer /select,"%~dp0dist\LolitosOtimizacoes-1.2.1-Setup.exe"
 pause
 exit /b 0
 

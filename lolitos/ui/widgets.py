@@ -43,6 +43,30 @@ class _Job(QRunnable):
 _JOBS: set = set()
 
 
+class _Invoker(QObject):
+    """Executa uma função na thread da interface, chamada de qualquer thread (sinal em fila)."""
+    call = Signal(object)
+
+
+_INVOKER: _Invoker | None = None
+
+
+def init_ui_thread() -> None:
+    """Chamar uma vez na thread principal (antes de qualquer ui_call)."""
+    global _INVOKER
+    if _INVOKER is None:
+        _INVOKER = _Invoker()
+        _INVOKER.call.connect(lambda fn: fn())
+
+
+def ui_call(fn) -> None:
+    """Agenda `fn()` na thread da interface. Seguro a partir de threads Python comuns."""
+    if _INVOKER is None:
+        fn()
+    else:
+        _INVOKER.call.emit(fn)
+
+
 def run_async(fn, *args, on_done=None, on_error=None, on_progress=None, **kwargs):
     job = _Job(fn, args, kwargs)
     _JOBS.add(job.sig)

@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLineEdit, QVBoxLayout, QWidget
 
 from lolitos.core import settings
@@ -12,7 +11,7 @@ from lolitos.modules import game_tweaks, gameserver, games
 from lolitos.modules.known_games import lookup
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
-from lolitos.ui.widgets import Card, Page, button, hrow, info, label, run_async
+from lolitos.ui.widgets import Card, Page, ui_call, button, hrow, info, label, run_async
 
 STORE = {"steam": "Steam", "epic": "Epic Games", "bdo": "Black Desert", "gog": "GOG", "ubisoft": "Ubisoft Connect",
          "instalado": "Programas instalados", "manual": "Adicionado por você"}
@@ -144,16 +143,19 @@ class GameCard(Card):
         main = self.page.main
 
         def log(s):
-            QTimer.singleShot(0, lambda: self.log.setText(s))
+            ui_call(lambda: self.log.setText(s))
 
         def end():
-            QTimer.singleShot(0, lambda: self.play.setEnabled(True))
+            def fin():
+                self.play.setEnabled(True)
+                self.log.setText("Jogo fechado: plano de energia e overlay voltaram ao normal.")
+            ui_call(fin)
             if main:
-                QTimer.singleShot(0, main.overlay_auto_off)
+                ui_call(main.overlay_auto_off)
 
         def start(_p):
             if main:
-                QTimer.singleShot(0, main.overlay_auto_on)
+                ui_call(main.overlay_auto_on)
 
         games.Session(self.g, log, start, end).start()
 

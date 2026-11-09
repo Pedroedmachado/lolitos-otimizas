@@ -5,7 +5,7 @@ import statistics
 import time
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QDoubleSpinBox, QFileDialog, QGridLayout, QLineEdit,
                                QTabWidget, QVBoxLayout, QWidget)
 
@@ -18,7 +18,7 @@ from lolitos.core.tweaks import CATALOG, by_cat
 from lolitos.modules import games
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList, bulk_apply
-from lolitos.ui.widgets import (Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async)
+from lolitos.ui.widgets import (ui_call, Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async)
 
 
 class BdoPage(Page):
@@ -94,16 +94,21 @@ class BdoPage(Page):
         self.play_log.setText("Preparando…")
 
         def log(s):
-            QTimer.singleShot(0, lambda: self.play_log.setText(s))
+            ui_call(lambda: self.play_log.setText(s))
 
         def started(proc):
+            ui_call(lambda: self.state_lbl.setText("O jogo está aberto."))
             if self.main:
-                QTimer.singleShot(0, self.main.overlay_auto_on)
+                ui_call(self.main.overlay_auto_on)
 
         def ended():
-            QTimer.singleShot(0, lambda: self.play_btn.setEnabled(True))
+            def fin():
+                self.play_btn.setEnabled(True)
+                self.state_lbl.setText("O jogo está fechado.")
+                self.play_log.setText("Jogo fechado: plano de energia e overlay voltaram ao normal.")
+            ui_call(fin)
             if self.main:
-                QTimer.singleShot(0, self.main.overlay_auto_off)
+                ui_call(self.main.overlay_auto_off)
 
         self.session = games.Session(g, log, started, ended)
         self.session.start()
