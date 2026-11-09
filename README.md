@@ -1,7 +1,7 @@
 # Lolitos Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.7.2. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.7.3. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.7.2-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\LolitosControl-1.7.3-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -47,6 +47,12 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 1.7.3
+
+* **Check-up** com o valor medido à direita e itens novos: arquivos temporários, Lixeira, Windows.old, memória em
+  uso, último ponto de restauração, firewall, UAC, plataforma para Windows 11, ativação, internet, saúde dos discos,
+  dispositivos com problema, falhas de programas e bateria.
 
 ## Novidades da 1.7.2
 

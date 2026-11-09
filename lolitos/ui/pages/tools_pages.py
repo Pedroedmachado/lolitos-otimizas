@@ -630,13 +630,12 @@ class CheckupPage(Page):
             w = self.box.takeAt(0).widget()
             if w:
                 w.deleteLater()
-        n_ok = sum(1 for c in checks if c.state == "ok")
+        n_ok = sum(1 for c in checks if c.state in ("ok", "info"))
         self.summary.setText(tr("Resultado: {} em ordem, {} pedem atenção.").replace("{}", str(n_ok), 1)
                              .replace("{}", str(len(checks) - n_ok), 1) + "  " +
                              tr("Medido às {}.").replace("{}", time.strftime("%H:%M")))
-        colors = {"ok": C["ok"], "atencao": C["warn"], "corrigir": C["bad"]}
-        order = {"corrigir": 0, "atencao": 1, "ok": 2}
-        for c in sorted(checks, key=lambda c: order[c.state]):
+        colors = {"ok": C["ok"], "atencao": C["warn"], "corrigir": C["bad"], "info": C["info"]}
+        for c in checks:
             row = QWidget()
             rl = QHBoxLayout(row)
             rl.setContentsMargins(4, 6, 4, 6)
@@ -650,10 +649,12 @@ class CheckupPage(Page):
             if c.detail:
                 col.addWidget(label(c.detail, "muted"))
             rl.addLayout(col, 1)
-            if c.state != "ok" and c.fix in FIX_PAGE and self.main:
+            if c.value:
+                rl.addWidget(label(c.value, wrap=False), 0, Qt.AlignTop | Qt.AlignRight)
+            if c.state in ("atencao", "corrigir") and c.fix in FIX_PAGE and self.main:
                 rl.addWidget(button("Corrigir", on_click=lambda _=False, p=FIX_PAGE[c.fix]: self.main.go(p)),
                              0, Qt.AlignVCenter)
-            elif c.state != "ok" and c.fix == "relaunch_admin" and self.main:
+            elif c.state in ("atencao", "corrigir") and c.fix == "relaunch_admin" and self.main:
                 from lolitos.core.system import relaunch_as_admin
                 rl.addWidget(button("Abrir como admin", on_click=lambda: relaunch_as_admin() and self.main.quit()))
             self.box.addWidget(row)
@@ -664,7 +665,7 @@ class CheckupPage(Page):
         lines = [f"{APP_NAME} {VERSION} — relatório do PC", time.strftime("%d/%m/%Y %H:%M"), "",
                  f"Perfil: {p.tier_name}", *p.summary(), f"Windows: {platform.platform()}", "", "Check-up:"]
         for c in self.checks:
-            lines.append(f"[{c.state.upper()}] {c.title}: {c.detail}")
+            lines.append(f"[{c.state.upper()}] {c.title}: {c.value} {c.detail}".rstrip())
         return "\n".join(lines)
 
     def _export(self):
