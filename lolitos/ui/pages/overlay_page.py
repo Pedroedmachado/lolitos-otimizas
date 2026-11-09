@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from lolitos.core import settings
 from lolitos.modules import fps
 from lolitos.ui.theme import C
-from lolitos.ui.widgets import Card, Page, button, hrow, label
+from lolitos.ui.widgets import Card, Page, TaskDialog, button, hrow, label
 
 ITEMS = [("fps", "FPS e 1% low"), ("cpu", "Uso da CPU"), ("cpu_temp", "Temperatura da CPU"), ("gpu", "Uso da GPU"),
          ("gpu_temp", "Temperatura da GPU"), ("vram", "VRAM em uso"), ("ram", "Uso da RAM"), ("ping", "Ping")]
@@ -58,18 +58,35 @@ class OverlayPage(Page):
 
         f = Card()
         f.lay.addWidget(label("<b>Medição de FPS</b>", rich=True))
-        pm = fps.find_presentmon()
-        f.lay.addWidget(label(
-            (f"<span style='color:{C['ok']}'>PresentMon encontrado: {pm}</span>" if pm else
-             f"<span style='color:{C['warn']}'>PresentMon não encontrado.</span> O FPS vem dos eventos de "
-             "apresentação de quadros do Windows (técnica do PresentMon, da Intel, licença MIT). Baixe o "
-             "'PresentMon-x.x.x-x64.exe' (versão console) e coloque na pasta abaixo."), rich=True))
-        from lolitos.core.system import data_dir
-        f.lay.addWidget(label(str(data_dir() / "tools"), "muted"))
-        f.lay.addLayout(hrow(button("Abrir página de download", on_click=lambda: webbrowser.open(fps.RELEASES)),
-                             button("Abrir pasta", on_click=lambda: __import__("os").startfile(str(data_dir() / "tools"))),
+        self.pm_lbl = label("", rich=True)
+        f.lay.addWidget(self.pm_lbl)
+        self.pm_btn = button("Baixar o PresentMon agora", "primary", self._download_pm)
+        f.lay.addLayout(hrow(self.pm_btn, button("Página do PresentMon", on_click=lambda: webbrowser.open(fps.RELEASES)),
                              None))
+        f.lay.addWidget(label("O FPS vem dos eventos de apresentação de quadros que o próprio Windows publica, lidos "
+                              "pelo PresentMon (Intel, licença MIT). Nada é injetado no jogo. O overlay mostra o FPS "
+                              "do jogo que estiver em primeiro plano.", "muted"))
         self.body.addWidget(f)
+        self._pm_status()
+
+    def _pm_status(self):
+        pm = fps.find_presentmon()
+        self.pm_lbl.setText(f"<span style='color:{C['ok']}'>PresentMon pronto: {pm}</span>" if pm else
+                            f"<span style='color:{C['warn']}'>PresentMon não encontrado.</span> Sem ele o overlay "
+                            "não mostra o FPS. Baixe com o botão abaixo (versão fixada, arquivo conferido).")
+        self.pm_btn.setVisible(pm is None)
+
+    def _download_pm(self):
+        def work(progress=None):
+            progress(f"Baixando PresentMon {fps.PM_VERSION} do GitHub da Intel…")
+            dst = fps.download_presentmon()
+            return f"Pronto: {dst}\nArquivo conferido (SHA-256)."
+
+        def done(_):
+            self._pm_status()
+            if self.main:
+                self.main.overlay_reconfigure()
+        TaskDialog(self, "PresentMon", work, on_done=done).exec()
 
     def _set(self, k, v):
         settings.set(k, v)

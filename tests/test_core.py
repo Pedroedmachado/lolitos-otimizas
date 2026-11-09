@@ -196,3 +196,34 @@ def test_i18n_files_consistent():
         for k, v in data.items():
             assert len(ph.findall(k)) == len(ph.findall(v)), (lang, k, v)
             assert re.findall(r"<[^>]+>", k) == re.findall(r"<[^>]+>", v), (lang, k, v)
+
+
+def test_covers_offline(tmp_path, monkeypatch):
+    from lolitos.modules import covers, games
+    monkeypatch.setattr(covers, "cover_dir", lambda: tmp_path)
+    asked = []
+    monkeypatch.setattr(covers, "_get", lambda u, timeout=8: asked.append(u) or None)
+    g = games.Game("steam:730", "Counter-Strike 2", "steam", "", "")
+    assert covers.fetch(g) is None and asked                      # tentou a Steam
+    asked.clear()
+    assert covers.fetch(g) is None and not asked                  # não insiste antes de 2 dias
+    img = tmp_path / "x.png"
+    img.write_bytes(b"\x89PNG" + b"0" * 2000)
+    assert covers.cached("steam:730") is None
+    covers.set_custom("steam:730", str(img))
+    assert covers.cached("steam:730") is not None
+
+
+def test_fps_pick_foreground_or_busiest():
+    import time
+    from lolitos.modules import fps
+    r = fps.FpsReader()
+    now = time.time()
+    for i in range(120):
+        r.frames[1].append((now - i / 60, 16.6))
+    r.names[1] = "game.exe"
+    for i in range(300):
+        r.frames[2].append((now - i / 150, 6.6))
+    r.names[2] = "dwm.exe"            # ignorado
+    f, low, name = r.stats_named()
+    assert name == "game.exe" and 55 < f < 65

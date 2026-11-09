@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ctypes
+import time
 
 import psutil
 from PySide6.QtCore import Qt, QTimer
@@ -77,14 +78,22 @@ class Overlay(QWidget):
             run_async(lambda: sensors.cpu_temp(3)[0], on_done=lambda v: setattr(self, "cpu_t", v))
         if "ping" in items:
             run_async(self._measure_ping, on_done=lambda v: setattr(self, "ping", v))
-        if "fps" in items and self.fps_reader is None:
-            from lolitos.bdo.game import EXE, game_process
-            from lolitos.modules.fps import FpsReader, find_presentmon
-            if find_presentmon():
-                name = EXE if game_process() else (self._running_game_exe() or self._foreground_exe())
-                if name:
-                    self.fps_reader = FpsReader(name)
-                    self.fps_reader.start()
+        if "fps" in items:
+            self._ensure_fps()
+
+    def _ensure_fps(self):
+        """Uma medição para todos os processos; se cair (PresentMon fechou, erro), tenta de novo a cada 20 s."""
+        from lolitos.modules.fps import FpsReader, find_presentmon
+        r = self.fps_reader
+        if r is not None and r.is_alive():
+            return
+        if r is not None and time.time() - getattr(self, "_fps_started", 0) < 20:
+            return
+        if not find_presentmon():
+            return
+        self.fps_reader = FpsReader()
+        self._fps_started = time.time()
+        self.fps_reader.start()
 
     @staticmethod
     def _running_game_exe() -> str:
@@ -133,8 +142,10 @@ class Overlay(QWidget):
                 if f:
                     v = f"{f:.0f}  (1% {low:.0f})"
                     col = "#4ade80" if f >= 60 else "#f5b82e" if f >= 40 else "#ff4d5e"
+                elif self.fps_reader.error and not self.fps_reader.is_alive():
+                    v, col = "erro", "#ff4d5e"
             elif k == "fps":
-                v = "PresentMon?"
+                v = "sem PresentMon"
             elif k == "cpu":
                 v = f"{psutil.cpu_percent():.0f}%"
             elif k == "cpu_temp" and self.cpu_t:

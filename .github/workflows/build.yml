@@ -44,6 +44,9 @@ jobs:
           --distpath dist --workpath build\pyi
           run_lolitos.pyw
 
+      - name: PresentMon (FPS do overlay)
+        run: python tools/get_presentmon.py
+
       - name: Inno Setup
         shell: pwsh
         run: |

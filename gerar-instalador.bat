@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title Lolitos Control - gerando o instalador
 rem =====================================================================
-rem  Gera dist\LolitosControl-1.6.1-Setup.exe com dois cliques.
+rem  Gera dist\LolitosControl-1.6.2-Setup.exe com dois cliques.
 rem  Instala sozinho (pelo winget) o que faltar: Python 3.12 e Inno Setup 6.
 rem =====================================================================
 setlocal EnableDelayedExpansion
@@ -67,13 +67,14 @@ echo  [4/5] Gerando o programa (.exe)...
 
 echo.
 echo  [5/5] Montando o instalador...
+.venv\Scripts\python.exe tools\get_presentmon.py || echo        (sem PresentMon: o instalador sai sem ele)
 "!ISCC!" /Q installer.iss || goto :erro
 
 echo.
 echo  =====================================================================
-echo   PRONTO:  dist\LolitosControl-1.6.1-Setup.exe
+echo   PRONTO:  dist\LolitosControl-1.6.2-Setup.exe
 echo  =====================================================================
-explorer /select,"%~dp0dist\LolitosControl-1.6.1-Setup.exe"
+explorer /select,"%~dp0dist\LolitosControl-1.6.2-Setup.exe"
 pause
 exit /b 0
 

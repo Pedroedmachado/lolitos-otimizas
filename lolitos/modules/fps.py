@@ -1,91 +1,198 @@
 """FPS via PresentMon (Intel, MIT) — lê os eventos de apresentação de quadros que o próprio Windows publica (ETW).
 
-Não injeta nada no jogo. Precisa do PresentMon (console) e de administrador.
-Coloque o PresentMon.exe em %LOCALAPPDATA%\\LolitosControl\\tools\\ ou instale pelo winget."""
+Não injeta nada no jogo e não lê a memória dele: é o mesmo mecanismo que o Windows usa para as ferramentas de
+desempenho. Precisa de administrador (o app já roda assim). O PresentMon vem junto no instalador ({app}\\tools);
+se faltar, o app baixa a versão fixada abaixo e confere o SHA-256."""
 from __future__ import annotations
 
 import csv
-import io
+import hashlib
 import shutil
 import statistics
 import subprocess
+import sys
 import threading
 import time
-from collections import deque
+import urllib.request
+from collections import defaultdict, deque
 from pathlib import Path
 
 from lolitos.core.system import CREATE_NO_WINDOW, IS_WIN, data_dir
 
 RELEASES = "https://github.com/GameTechDev/PresentMon/releases"
+PM_VERSION = "2.6.0"
+PM_URL = f"https://github.com/GameTechDev/PresentMon/releases/download/v{PM_VERSION}/PresentMon-{PM_VERSION}-x64.exe"
+PM_SHA256 = "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af"
+
+# processos que apresentam quadros mas não são jogos
+IGNORE = {"dwm.exe", "explorer.exe", "lolitoscontrol.exe", "python.exe", "pythonw.exe", "searchhost.exe",
+          "startmenuexperiencehost.exe", "shellexperiencehost.exe", "textinputhost.exe", "applicationframehost.exe",
+          "systemsettings.exe", "lockapp.exe", "<unknown>", "<error>"}
 
 
 def find_presentmon() -> Path | None:
+    """Ordem: o que veio no instalador, o que o app baixou, o que estiver no PATH."""
+    dirs = []
+    if getattr(sys, "frozen", False):
+        dirs.append(Path(sys.executable).parent / "tools")
     tools = data_dir() / "tools"
     tools.mkdir(exist_ok=True)
-    for p in sorted(tools.glob("PresentMon*.exe"), reverse=True):
-        return p
+    dirs.append(tools)
+    for d in dirs:
+        for p in sorted(d.glob("PresentMon*.exe"), reverse=True):
+            return p
     w = shutil.which("PresentMon") or shutil.which("PresentMon.exe")
     return Path(w) if w else None
 
 
-class FpsReader(threading.Thread):
-    """Mantém as últimas ~2 s de frametimes do processo e expõe fps / 1% low."""
+def download_presentmon(dst: Path | None = None, progress=None) -> Path:
+    """Baixa a versão fixada do PresentMon e confere o SHA-256 antes de usar."""
+    dst = dst or (data_dir() / "tools" / "PresentMon.exe")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_suffix(".part")
+    req = urllib.request.Request(PM_URL, headers={"User-Agent": "LolitosControl"})
+    h = hashlib.sha256()
+    with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
+        while True:
+            chunk = r.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+            f.write(chunk)
+            if progress:
+                progress(f.tell())
+    if h.hexdigest() != PM_SHA256:
+        tmp.unlink(missing_ok=True)
+        raise ValueError("o arquivo baixado não confere (SHA-256 diferente); nada foi instalado")
+    tmp.replace(dst)
+    return dst
 
-    def __init__(self, process_name: str):
+
+def foreground_pid() -> int:
+    if not IS_WIN:
+        return 0
+    import ctypes
+    pid = ctypes.c_ulong()
+    ctypes.windll.user32.GetWindowThreadProcessId(ctypes.windll.user32.GetForegroundWindow(), ctypes.byref(pid))
+    return pid.value
+
+
+class FpsReader(threading.Thread):
+    """Uma sessão do PresentMon para todos os processos; guarda os últimos frametimes de cada um.
+
+    stats() mostra o processo da janela em primeiro plano (o jogo, quando você está jogando) ou, se ele não estiver
+    desenhando nada, o que mais apresentou quadros nos últimos segundos."""
+
+    def __init__(self):
         super().__init__(daemon=True)
-        self.process_name = process_name
-        self.frames: deque[tuple[float, float]] = deque(maxlen=4000)  # (t, ms)
+        self.frames: dict[int, deque] = defaultdict(lambda: deque(maxlen=3000))   # pid -> (t, ms)
+        self.names: dict[int, str] = {}
         self.proc: subprocess.Popen | None = None
         self.error = ""
+        self.last_line = 0.0
         self._stop = threading.Event()
+        self._lock = threading.Lock()
 
     def run(self):
         exe = find_presentmon()
-        if not exe or not IS_WIN:
+        if not IS_WIN:
+            self.error = "só no Windows"
+            return
+        if not exe:
             self.error = "PresentMon não encontrado"
             return
-        args = [str(exe), "--process_name", self.process_name, "--output_stdout", "--stop_existing_session",
-                "--session_name", "LolitosFPS", "--no_console_stats", "--terminate_on_proc_exit"]
+        args = [str(exe), "--output_stdout", "--no_console_stats", "--stop_existing_session",
+                "--session_name", "LolitosFPS", "--no_track_gpu", "--no_track_display", "--no_track_input"]
+        for name in ("dwm.exe", "explorer.exe", "LolitosControl.exe"):
+            args += ["--exclude", name]
+        log = data_dir() / "tools" / "presentmon.log"
         try:
-            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                         creationflags=CREATE_NO_WINDOW, text=True, bufsize=1)
+            self._err = open(log, "w", encoding="utf-8", errors="replace")
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=self._err,
+                                         creationflags=CREATE_NO_WINDOW, text=True, encoding="utf-8",
+                                         errors="replace", bufsize=1)
         except OSError as e:
             self.error = str(e)
             return
-        header = None
-        col = None
-        for line in self.proc.stdout:  # type: ignore[union-attr]
+        header: list[str] | None = None
+        c_app = c_pid = c_ms = None
+        for row in csv.reader(self.proc.stdout):  # type: ignore[arg-type]
             if self._stop.is_set():
                 break
-            row = next(csv.reader(io.StringIO(line)), None)
             if not row:
                 continue
             if header is None:
+                if "Application" not in row:
+                    continue          # avisos antes do cabeçalho
                 header = row
-                for name in ("MsBetweenPresents", "msBetweenPresents", "FrameTime", "MsBetweenDisplayChange"):
+                c_app, c_pid = header.index("Application"), header.index("ProcessID")
+                for name in ("FrameTime", "MsBetweenPresents", "msBetweenPresents", "MsBetweenDisplayChange"):
                     if name in header:
-                        col = header.index(name)
+                        c_ms = header.index(name)
                         break
-                if col is None:
+                if c_ms is None:
                     self.error = "formato do PresentMon não reconhecido"
                     break
                 continue
             try:
-                ms = float(row[col])
+                pid, ms = int(row[c_pid]), float(row[c_ms])
             except (ValueError, IndexError):
                 continue
+            now = time.time()
+            self.last_line = now
             if 0 < ms < 1000:
-                self.frames.append((time.time(), ms))
+                with self._lock:
+                    self.frames[pid].append((now, ms))
+                    self.names[pid] = row[c_app]
+        if self.proc:
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        self._err.close()
+        if self.proc and self.proc.poll() is not None and not self.error and not self._stop.is_set():
+            try:
+                err = log.read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                err = ""
+            lines = [x for x in err.splitlines() if x.lower().startswith("error")] or err.splitlines()
+            self.error = lines[-1][:120] if lines else f"PresentMon fechou (código {self.proc.returncode})"
+
+    def _pick(self, window: float) -> int | None:
+        now = time.time()
+        with self._lock:
+            recent = {pid: sum(1 for t, _ in d if now - t <= window) for pid, d in self.frames.items()}
+            names = dict(self.names)
+        recent = {p: n for p, n in recent.items() if n >= 3 and names.get(p, "").lower() not in IGNORE}
+        if not recent:
+            return None
+        fg = foreground_pid()
+        if fg in recent:
+            return fg
+        return max(recent, key=recent.get)
 
     def stats(self, window: float = 2.0) -> tuple[float | None, float | None]:
+        fps, low, _ = self.stats_named(window)
+        return fps, low
+
+    def stats_named(self, window: float = 2.0) -> tuple[float | None, float | None, str]:
+        pid = self._pick(window)
+        if pid is None:
+            return None, None, ""
         now = time.time()
-        ms = [m for t, m in list(self.frames) if now - t <= window]
+        with self._lock:
+            ms = [m for t, m in self.frames[pid] if now - t <= window]
+            name = self.names.get(pid, "")
+            # descarta processos que pararam há muito tempo
+            for p in [p for p, d in self.frames.items() if d and now - d[-1][0] > 30]:
+                del self.frames[p]
+                self.names.pop(p, None)
         if len(ms) < 3:
-            return None, None
+            return None, None, name
         fps = 1000 / statistics.mean(ms)
         worst = sorted(ms, reverse=True)[: max(1, len(ms) // 100)]
         low1 = 1000 / statistics.mean(worst)
-        return fps, low1
+        return fps, low1, name
 
     def stop(self):
         self._stop.set()

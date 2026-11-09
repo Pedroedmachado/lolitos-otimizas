@@ -1,7 +1,7 @@
 ﻿; Instalador do Lolitos Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Lolitos Control"
-#define AppVersion "1.6.1"
+#define AppVersion "1.6.2"
 #define AppExe "LolitosControl.exe"
 #define OldExe "LolitosOtimizacoes.exe"
 #define OldName "Lolitos Otimizações"
@@ -76,6 +76,8 @@ Name: "autostart"; Description: "{cm:AutoStart}"; Flags: unchecked
 [Files]
 Source: "dist\LolitosControl\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "legal\*.txt"; DestDir: "{app}\legal"; Flags: ignoreversion
+; PresentMon (Intel, MIT) para o FPS do overlay — baixado e conferido por tools\get_presentmon.py
+Source: "vendor\PresentMon.exe"; DestDir: "{app}\tools"; Flags: ignoreversion skipifsourcedoesntexist
 
 [InstallDelete]
 ; restos da versão com o nome antigo (Lolitos Otimizações, até a 1.3.x)
