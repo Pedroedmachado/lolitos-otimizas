@@ -39,18 +39,16 @@ def literal(node) -> str | None:
 
 def visible(s: str) -> bool:
     t = re.sub(r"<[^>]+>|\{\}", " ", s).strip()
+    t = re.sub(r"^[^A-Za-zÀ-ú]+", "", t)          # ícones, marcadores e números no começo
     if len(t) < 2 or not re.search(r"[A-Za-zÀ-ú]{2}", t):
         return False
-    if re.search(r"(^|[\s\"'])(HK(LM|CU|EY)|[A-Z]:\\|\\\\|%[A-Z]+%|\$_|Get-|Set-|New-|Remove-|-Command)|\.exe\b|::|\\n\$",
-                 s):
+    if re.search(r"(^|[\s\"'])(HK(LM|CU|EY)|[A-Z]:\\|\\\\|%[A-Z]+%|\$_|Get-|Set-|New-|Remove-|-Command)|::", s):
         return False
     if "\\" in s and " " not in s:
         return False
-    if " " not in t:   # uma palavra só: precisa começar com maiúscula e não parecer id
-        return bool(re.fullmatch(r"[A-ZÀ-Ú][A-Za-zÀ-ú\-]+[.:!?…]?|[A-ZÀ-Ú]{2,}[A-ZÀ-Ú ]*", t))
-    if re.fullmatch(r"[\w.\-/:]+", t):
-        return False
-    return bool(PT.search(t)) or t[:1].isupper()
+    if re.fullmatch(r"[\w.\-/:%?=&]+", t) and not re.fullmatch(r"[A-ZÀ-Ú][A-Za-zÀ-ú\-]+[.:!?…]?", t):
+        return bool(re.fullmatch(r"[A-ZÀ-Ú]{2,}", t))   # ids, urls e arquivos ficam de fora
+    return True
 
 
 def collect(path: Path, out: dict):

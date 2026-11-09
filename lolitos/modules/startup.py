@@ -67,7 +67,7 @@ def list_entries() -> list[Entry]:
 
 def set_enabled(e: Entry, enabled: bool) -> None:
     reg.write(e.ahive, f"{APPROVED}\\{e.akey}", e.name, "binary", ENABLED if enabled else DISABLED)
-    history.add("startup", f"{e.name}: {'vai' if enabled else 'não vai mais'} abrir com o Windows",
+    history.add("startup", (f"{e.name}: vai abrir com o Windows" if enabled else f"{e.name}: não vai mais abrir com o Windows"),
                 "Inicialização", success=True, reversible=False)
 
 

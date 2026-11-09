@@ -46,6 +46,15 @@ def set_table(lang: str, data: dict) -> None:
     _exact.clear()
     _tpl.clear()
     _cached.cache_clear()
+    data = dict(data)
+    # frases com partes separadas ("a · b", "a<br>b"): cada parte também vira uma entrada, para quando o app
+    # monta a mesma parte em outra frase
+    for pt, tr_ in list(data.items()):
+        for sep in (" · ", "<br>"):
+            if isinstance(tr_, str) and sep in pt and pt.count(sep) == tr_.count(sep):
+                for a, b in zip(pt.split(sep), tr_.split(sep)):
+                    if a.strip() and a.strip() != "{}":
+                        data.setdefault(a.strip(), b.strip())
     for pt, tr_ in data.items():
         if not tr_ or not isinstance(tr_, str):
             continue
@@ -111,13 +120,22 @@ def _cached(s: str) -> str:
                 return pre + _fill(out, vals) + post
             except (IndexError, KeyError, ValueError):
                 break
-    # linhas separadas por <br> ou quebra de linha: traduz cada uma
+    # frase montada em partes: traduz cada linha, cada trecho de texto entre tags e cada item separado por "·"
     for sep in ("<br>", "\n"):
         if sep in core:
-            pieces = core.split(sep)
-            if len(pieces) > 1:
-                return pre + sep.join(_cached(p) if p.strip() else p for p in pieces) + post
+            return pre + sep.join(_cached(p) if p.strip() else p for p in core.split(sep)) + post
+    if "<" in core and ">" in core:
+        parts = _TAG.split(core)
+        if len(parts) > 1:
+            out = [p if (i % 2 or not p.strip()) else _cached(p) for i, p in enumerate(parts)]
+            return pre + "".join(out) + post
+    for sep in (" · ", " — ", " | "):
+        if sep in core:
+            return pre + sep.join(_cached(p) if p.strip() else p for p in core.split(sep)) + post
     return s
+
+
+_TAG = re.compile(r"(<[^>]+>)")
 
 
 def _fill(template: str, vals: list[str]) -> str:

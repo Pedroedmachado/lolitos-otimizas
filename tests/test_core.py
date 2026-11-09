@@ -172,6 +172,8 @@ def test_i18n_templates():
         assert i18n.tr("<b>1.1.1.1</b> · perda 2.5%") == "<b>1.1.1.1</b> · loss 2.5%"
         assert i18n.tr("Uso de Desempenho") == "Performance usage"      # valor traduzido também
         assert i18n.tr("Fechar<br>Desempenho") == "Close<br>Performance"
+        assert i18n.tr("<b>Fechar</b> · 10 min") == "<b>Close</b> · 10 min"
+        assert i18n.tr("Desempenho · x86 · Fechar") == "Performance · x86 · Close"
         assert i18n.tr("sem tradução") == "sem tradução"
     finally:
         i18n.set_table("pt", {})
