@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import re
 
-from PySide6.QtWidgets import QCheckBox, QComboBox, QGridLayout, QProgressBar, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QGridLayout, QLineEdit, QProgressBar, QTabWidget, QVBoxLayout,
+                               QWidget)
 
 from lolitos.core.system import resource_path
+from lolitos.i18n import tr
 from lolitos.core.tweaks import CATALOG, CATS, by_cat
-from lolitos.modules import antivirus
+from lolitos.modules import antivirus, winget
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList
 from lolitos.ui.widgets import Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async
@@ -199,16 +201,71 @@ class DefenderAiPage(_TweakPage):
 
 
 # ===================================================================== Formatação
-FRESH_APPS = [("Google Chrome", "Google.Chrome"), ("Firefox", "Mozilla.Firefox"), ("Brave", "Brave.Brave"),
-              ("Discord", "Discord.Discord"), ("Steam", "Valve.Steam"), ("Epic Games", "EpicGames.EpicGamesLauncher"),
-              ("Ubisoft Connect", "Ubisoft.Connect"), ("EA app", "ElectronicArts.EADesktop"),
-              ("Battle.net", "Blizzard.BattleNet"), ("GOG Galaxy", "GOG.Galaxy"), ("7-Zip", "7zip.7zip"),
-              ("WinRAR", "RARLab.WinRAR"), ("VLC", "VideoLAN.VLC"), ("OBS Studio", "OBSProject.OBSStudio"),
-              ("Telegram", "Telegram.TelegramDesktop"), ("Notepad++", "Notepad++.Notepad++"),
-              ("Visual C++ 2015-2022", "Microsoft.VCRedist.2015+.x64"),
-              (".NET Desktop Runtime 8", "Microsoft.DotNet.DesktopRuntime.8")]
+# programas por categoria (IDs conferidos no repositório oficial do winget, microsoft/winget-pkgs)
+FRESH_GROUPS = [
+    ("Essenciais para jogos", "Bibliotecas que a maioria dos jogos pede. Se faltar alguma, o jogo não abre ou dá erro de DLL.", [
+        ("Visual C++ 2015-2022 (64 bits)", "Microsoft.VCRedist.2015+.x64"),
+        ("Visual C++ 2015-2022 (32 bits)", "Microsoft.VCRedist.2015+.x86"),
+        ("Visual C++ 2013 (64 bits)", "Microsoft.VCRedist.2013.x64"), ("Visual C++ 2013 (32 bits)", "Microsoft.VCRedist.2013.x86"),
+        ("Visual C++ 2012 (64 bits)", "Microsoft.VCRedist.2012.x64"), ("Visual C++ 2010 (64 bits)", "Microsoft.VCRedist.2010.x64"),
+        ("Visual C++ 2008 (64 bits)", "Microsoft.VCRedist.2008.x64"), ("Visual C++ 2005 (64 bits)", "Microsoft.VCRedist.2005.x64"),
+        ("DirectX (runtime de usuário final)", "Microsoft.DirectX"), (".NET Desktop Runtime 9", "Microsoft.DotNet.DesktopRuntime.9"),
+        (".NET Desktop Runtime 8", "Microsoft.DotNet.DesktopRuntime.8"), (".NET Desktop Runtime 6", "Microsoft.DotNet.DesktopRuntime.6"),
+        ("XNA Framework 4.0", "Microsoft.XNARedist"), ("NVIDIA PhysX", "Nvidia.PhysX"),
+        ("Java (Oracle JRE)", "Oracle.JavaRuntimeEnvironment"), ("WebView2 Runtime", "Microsoft.EdgeWebView2Runtime")]),
+    ("Navegadores", "", [
+        ("Google Chrome", "Google.Chrome"), ("Firefox", "Mozilla.Firefox"), ("Brave", "Brave.Brave"),
+        ("Opera GX", "Opera.OperaGX"), ("Opera", "Opera.Opera"), ("Microsoft Edge", "Microsoft.Edge"),
+        ("Vivaldi", "Vivaldi.Vivaldi")]),
+    ("Comunicação", "", [
+        ("Discord", "Discord.Discord"), ("Telegram", "Telegram.TelegramDesktop"),
+        ("TeamSpeak 3", "TeamSpeakSystems.TeamSpeakClient"), ("Guilded", "Guilded.Guilded"), ("Zoom", "Zoom.Zoom"),
+        ("Microsoft Teams", "Microsoft.Teams")]),
+    ("Lojas e launchers de jogos", "", [
+        ("Steam", "Valve.Steam"), ("Epic Games", "EpicGames.EpicGamesLauncher"), ("Ubisoft Connect", "Ubisoft.Connect"),
+        ("EA app", "ElectronicArts.EADesktop"), ("Battle.net", "Blizzard.BattleNet"), ("GOG Galaxy", "GOG.Galaxy"),
+        ("Amazon Games", "Amazon.Games"), ("League of Legends (BR)", "RiotGames.LeagueOfLegends.BR"),
+        ("Valorant (BR)", "RiotGames.Valorant.BR"), ("Minecraft Launcher", "Mojang.MinecraftLauncher"),
+        ("CurseForge", "Overwolf.CurseForge"), ("GeForce NOW", "Nvidia.GeForceNow"), ("osu!", "ppy.osu"),
+        ("Playnite", "Playnite.Playnite"), ("Heroic Games Launcher", "HeroicGamesLauncher.HeroicGamesLauncher"),
+        ("Prism Launcher", "PrismLauncher.PrismLauncher")]),
+    ("Hardware e monitoramento", "", [
+        ("MSI Afterburner", "Guru3D.Afterburner"), ("HWiNFO", "REALiX.HWiNFO"), ("CPU-Z", "CPUID.CPU-Z"),
+        ("GPU-Z", "TechPowerUp.GPU-Z"), ("HWMonitor", "CPUID.HWMonitor"), ("CrystalDiskInfo", "CrystalDewWorld.CrystalDiskInfo"),
+        ("CrystalDiskMark", "CrystalDewWorld.CrystalDiskMark"),
+        ("Display Driver Uninstaller (DDU)", "Wagnardsoft.DisplayDriverUninstaller"),
+        ("Intel Driver & Support Assistant", "Intel.IntelDriverAndSupportAssistant"), ("Logitech G HUB", "Logitech.GHUB"),
+        ("SteelSeries GG", "SteelSeries.GG"), ("Corsair iCUE 5", "Corsair.iCUE.5"), ("Elgato Stream Deck", "Elgato.StreamDeck")]),
+    ("Gravação e streaming", "", [
+        ("OBS Studio", "OBSProject.OBSStudio"), ("Streamlabs Desktop", "Streamlabs.Streamlabs"), ("ShareX", "ShareX.ShareX"),
+        ("Greenshot", "Greenshot.Greenshot"), ("Voicemeeter", "VB-Audio.Voicemeeter"),
+        ("Voicemeeter Banana", "VB-Audio.Voicemeeter.Banana"), ("Audacity", "Audacity.Audacity")]),
+    ("Música e vídeo", "", [
+        ("VLC", "VideoLAN.VLC"), ("MPC-HC", "clsid2.mpc-hc"), ("K-Lite Codec Pack", "CodecGuide.K-LiteCodecPack.Standard"),
+        ("Deezer", "Deezer.Deezer"), ("foobar2000", "PeterPawlowski.foobar2000"), ("Stremio", "Stremio.Stremio"),
+        ("Plex", "Plex.Plex"), ("HandBrake", "HandBrake.HandBrake")]),
+    ("Utilitários", "", [
+        ("7-Zip", "7zip.7zip"), ("WinRAR", "RARLab.WinRAR"), ("Everything (busca)", "voidtools.Everything"),
+        ("WizTree", "AntibodySoftware.WizTree"), ("WinDirStat", "WinDirStat.WinDirStat"), ("PowerToys", "Microsoft.PowerToys"),
+        ("Notepad++", "Notepad++.Notepad++"), ("qBittorrent", "qBittorrent.qBittorrent"), ("AutoHotkey", "AutoHotkey.AutoHotkey"),
+        ("Rufus", "Rufus.Rufus"), ("Ventoy", "Ventoy.Ventoy"), ("LocalSend", "LocalSend.LocalSend"),
+        ("UniGetUI", "MartiCliment.UniGetUI"), ("Bulk Crap Uninstaller", "Klocman.BulkCrapUninstaller"),
+        ("Revo Uninstaller", "RevoUninstaller.RevoUninstaller"), ("BleachBit", "BleachBit.BleachBit"),
+        ("Malwarebytes", "Malwarebytes.Malwarebytes"), ("Bitwarden", "Bitwarden.Bitwarden"), ("Proton VPN", "Proton.ProtonVPN"),
+        ("Speedtest by Ookla", "Ookla.Speedtest.Desktop"), ("AnyDesk", "AnyDesk.AnyDesk"), ("TeamViewer", "TeamViewer.TeamViewer"),
+        ("Parsec", "Parsec.Parsec"), ("Google Drive", "Google.GoogleDrive"), ("Dropbox", "Dropbox.Dropbox"),
+        ("MEGA", "Mega.MEGASync"), ("Windows Terminal", "Microsoft.WindowsTerminal")]),
+    ("Documentos e criação", "", [
+        ("Adobe Acrobat Reader", "Adobe.Acrobat.Reader.64-bit"), ("SumatraPDF", "SumatraPDF.SumatraPDF"),
+        ("LibreOffice", "TheDocumentFoundation.LibreOffice"), ("ONLYOFFICE", "ONLYOFFICE.DesktopEditors"),
+        ("Notion", "Notion.Notion"), ("Obsidian", "Obsidian.Obsidian"), ("GIMP", "GIMP.GIMP.3"), ("Krita", "KDE.Krita")]),
+    ("Programação", "", [
+        ("VS Code", "Microsoft.VisualStudioCode"), ("Git", "Git.Git"), ("Python 3.13", "Python.Python.3.13"),
+        ("Node.js LTS", "OpenJS.NodeJS.LTS")]),
+]
+FRESH_APPS = [a for _, _, items in FRESH_GROUPS for a in items]
 FRESH_DEFAULT = {"Google.Chrome", "Discord.Discord", "Valve.Steam", "7zip.7zip", "Microsoft.VCRedist.2015+.x64",
-                 "Microsoft.DotNet.DesktopRuntime.8"}
+                 "Microsoft.VCRedist.2015+.x86", "Microsoft.DirectX", "Microsoft.DotNet.DesktopRuntime.8"}
 
 
 class FreshPage(Page):
@@ -232,17 +289,46 @@ class FreshPage(Page):
 
         apps = Card()
         apps.lay.addWidget(label("Programas", "h2"))
-        grid = QGridLayout()
+        self.q = QLineEdit()
+        self.q.setPlaceholderText("Buscar programa…")
+        self.q.textChanged.connect(self._filter)
+        self.sel = label("", "muted", wrap=False)
+        apps.lay.addLayout(hrow(self.q, button("Só os essenciais", on_click=self._only_default),
+                                button("Desmarcar tudo", on_click=lambda: self._set_all(False)), self.sel,
+                                stretch_first=True))
         self.app_cks: list[tuple[QCheckBox, str]] = []
-        for i, (name, wid) in enumerate(FRESH_APPS):
-            ck = QCheckBox(name)
-            ck.setChecked(wid in FRESH_DEFAULT)
-            ck.setToolTip(wid)
-            grid.addWidget(ck, i // 3, i % 3)
-            self.app_cks.append((ck, wid))
-        apps.lay.addLayout(grid)
-        apps.lay.addWidget(label("Mais de 300 outros programas em Instalar apps.", "muted"))
+        self.groups: list[tuple[QWidget, list[QCheckBox], QCheckBox]] = []
+        for title, note, items in FRESH_GROUPS:
+            box = QWidget()
+            bl = QVBoxLayout(box)
+            bl.setContentsMargins(0, 8, 0, 0)
+            bl.setSpacing(4)
+            g_all = QCheckBox(f"{tr(title)} ({len(items)})")
+            g_all.setStyleSheet("font-weight:700;")
+            bl.addWidget(g_all)
+            if note:
+                bl.addWidget(label(note, "muted"))
+            grid = QGridLayout()
+            grid.setHorizontalSpacing(16)
+            cks = []
+            for i, (name, wid) in enumerate(items):
+                ck = QCheckBox(name.replace("&", "&&"))      # "&" sozinho vira atalho de teclado no Qt
+                ck.setChecked(wid in FRESH_DEFAULT)
+                ck.setToolTip(wid)
+                ck.toggled.connect(self._count)
+                grid.addWidget(ck, i // 3, i % 3)
+                self.app_cks.append((ck, wid))
+                cks.append(ck)
+            g_all.setChecked(all(c.isChecked() for c in cks))
+            g_all.clicked.connect(lambda v, cc=cks: [c.setChecked(v) for c in cc if c.isVisible() or not self.q.text()])
+            bl.addLayout(grid)
+            apps.lay.addWidget(box)
+            self.groups.append((box, cks, g_all))
+        apps.lay.addWidget(label("Os instaladores vêm direto das fontes oficiais de cada programa pelo winget. "
+                                 "Mais de 300 outros programas em Instalar apps.", "muted"))
         self.body.addWidget(apps)
+        self._count()
+        run_async(lambda: (winget.ensure_winget() and winget.installed_ids()) or set(), on_done=self._mark)
 
         drv = Card()
         drv.lay.addWidget(label("Drivers", "h2"))
@@ -259,6 +345,42 @@ class FreshPage(Page):
         self.go_btn = button("Preparar meu Windows", "primary", self._run)
         self.go_btn.setMinimumHeight(42)
         self.body.addLayout(hrow(self.go_btn, None))
+
+    def _mark(self, have):
+        """Programas já instalados ficam marcados com ✓ e desmarcados."""
+        have = {h.lower() for h in have}
+        for ck, wid in self.app_cks:
+            if wid.lower() in have:
+                ck.setChecked(False)
+                ck.setText(ck.text() + " ✓")
+                ck.setToolTip(f"{wid} — já instalado")
+        self._count()
+
+    def _count(self, *_):
+        n = sum(1 for ck, _ in self.app_cks if ck.isChecked())
+        self.sel.setText(f"{n} selecionado(s)")
+        for _, cks, head in getattr(self, "groups", []):
+            head.blockSignals(True)
+            head.setChecked(all(c.isChecked() for c in cks))
+            head.blockSignals(False)
+
+    def _set_all(self, v):
+        for ck, _ in self.app_cks:
+            ck.setChecked(v)
+
+    def _only_default(self):
+        for ck, wid in self.app_cks:
+            ck.setChecked(wid in FRESH_DEFAULT and not ck.text().endswith("✓"))
+
+    def _filter(self, text):
+        text = text.lower().strip()
+        for box, cks, _ in self.groups:
+            vis = 0
+            for ck in cks:
+                show = not text or text in ck.text().lower() or text in ck.toolTip().lower()
+                ck.setVisible(show)
+                vis += show
+            box.setVisible(vis > 0)
 
     def _run(self):
         ids = [w for ck, w in self.app_cks if ck.isChecked()] if self.s_apps.isChecked() else []
