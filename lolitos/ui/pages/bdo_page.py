@@ -15,7 +15,9 @@ from lolitos.bdo.tweaks import INGAME_TIPS
 from lolitos.catalog.presets import PRESETS_BY_ID
 from lolitos.core.system import human_size, process_running, run
 from lolitos.core.tweaks import CATALOG, by_cat
-from lolitos.modules import games
+from lolitos.core import history
+from lolitos.i18n import tr
+from lolitos.modules import games, nvprofile
 from lolitos.ui.theme import C
 from lolitos.ui.tweaklist import TweakList, bulk_apply
 from lolitos.ui.widgets import (ui_call, Card, Page, TaskDialog, button, confirm, hrow, info, label, run_async)
@@ -124,12 +126,164 @@ class BdoPage(Page):
         c.lay.addWidget(label(p.desc, "muted"))
         c.lay.addLayout(hrow(button("Aplicar pacote do Windows para Guerra", "primary", self._apply_pack), None))
         lay.addWidget(c)
+        lay.addWidget(self._nvidia_card())
         lay.addWidget(label("Ajustes do executável do BDO", "h2"))
         self.win_list = TweakList(by_cat("bdo") + [CATALOG["nagle_off"], CATALOG["net_throttling_off"]], self,
                                   search=False)
         lay.addWidget(self.win_list)
         lay.addStretch()
         return w
+
+    # ---------------------------------------------------------------- perfil NVIDIA
+    def _nvidia_card(self):
+        c = Card()
+        c.lay.addWidget(label("<b>Painel de Controle NVIDIA para o BDO</b>", "h3", rich=True))
+        c.lay.addWidget(label("As configurações 3D do Black Desert gravadas direto no driver, pela interface oficial "
+                              "da NVIDIA — o mesmo lugar que o Painel NVIDIA usa. Dá para desfazer a qualquer hora.",
+                              "muted"))
+        self.nv_src = label("", "muted", wrap=False)
+        c.lay.addWidget(self.nv_src)
+        self.nv_grid = QGridLayout()
+        self.nv_grid.setHorizontalSpacing(16)
+        self.nv_grid.setVerticalSpacing(3)
+        c.lay.addLayout(self.nv_grid)
+        self.nv_state = label("", rich=True)
+        c.lay.addWidget(self.nv_state)
+        self.nv_apply = button("Aplicar no driver", "primary", self._nv_apply)
+        self.nv_undo = button("Desfazer", on_click=self._nv_undo)
+        c.lay.addLayout(hrow(self.nv_apply, self.nv_undo, button("Importar arquivo .nip…", on_click=self._nv_import),
+                             button("Usar o perfil do app", on_click=self._nv_default),
+                             button("Abrir Painel NVIDIA", on_click=self._nv_panel), None))
+        self._nv_fill()
+        return c
+
+    def _nv_fill(self):
+        prof = nvprofile.bdo_profile()
+        custom = nvprofile.custom_file().exists()
+        self.nv_src.setText(tr("Perfil: {} · {}").replace("{}", prof.name, 1).replace(
+            "{}", tr("importado por você") if custom else tr("o que acompanha o app"), 1)
+            + " · " + ", ".join(prof.exes))
+        while self.nv_grid.count():
+            it = self.nv_grid.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+        self.nv_vals = {}
+        for i, s in enumerate(prof.settings):
+            name, val = nvprofile.describe(s)
+            self.nv_grid.addWidget(label(tr(name), "barname", wrap=False), i, 0)
+            self.nv_grid.addWidget(label(tr(val), wrap=False), i, 1)
+            cur = label("", "muted", wrap=False)
+            self.nv_grid.addWidget(cur, i, 2)
+            self.nv_vals[s.id] = cur
+        self.nv_grid.setColumnStretch(3, 1)
+        self.nv_state.setText(tr("Lendo o driver…"))
+
+        def work():
+            t = CATALOG["bdo_nvidia_profile"]
+            if not t.applicable():
+                return None
+            return t.status(), nvprofile.current_values(prof)
+
+        def done(r):
+            on = bool(history.active_for("bdo_nvidia_profile"))
+            self.nv_undo.setEnabled(on)
+            if r is None:
+                self.nv_apply.setEnabled(False)
+                self.nv_state.setText(f"<span style='color:{C['muted']}'>"
+                                      + tr("Placa NVIDIA ou driver não encontrados neste PC.") + "</span>")
+                return
+            st, vals = r
+            self.nv_apply.setEnabled(st != "on")
+            for s in prof.settings:
+                v = vals.get(s.id)
+                ok = v == s.value
+                self.nv_vals[s.id].setText(tr("✓ no driver") if ok else (
+                    tr("hoje: {}").replace("{}", tr(nvprofile.describe(nvprofile.NipSetting(s.id, v))[1]))
+                    if v is not None else tr("hoje: padrão")))
+                self.nv_vals[s.id].setStyleSheet(f"color:{C['ok'] if ok else C['muted']};")
+            txt, col = {"on": ("Aplicado no driver", C["ok"]), "partial": ("Aplicado em parte", C["gold"])}.get(
+                st, ("Ainda não aplicado", C["muted"]))
+            self.nv_state.setText(f"<b style='color:{col}'>{tr(txt)}</b>")
+        run_async(work, on_done=done)
+
+    def _nv_after(self, *_):
+        self._nv_fill()
+        self.win_list.refresh()
+        if self.main:
+            self.main.changed()
+
+    def _nv_apply(self):
+        t = CATALOG["bdo_nvidia_profile"]
+        TaskDialog(self, "Perfil NVIDIA do BDO", bulk_apply, [t], restore_point=False, on_done=self._nv_after).exec()
+
+    def _nv_undo(self):
+        from lolitos.core import engine
+        t = CATALOG["bdo_nvidia_profile"]
+
+        def work(progress=None):
+            ok, msg = engine.undo_tweak(t, progress)
+            return "Perfil NVIDIA voltou como estava." if ok else msg
+        TaskDialog(self, "Perfil NVIDIA do BDO", work, on_done=self._nv_after).exec()
+
+    def _nv_switch(self, prof):
+        """Troca o perfil usado; se o antigo estava aplicado, desfaz e aplica o novo."""
+        from lolitos.core import engine
+        t = CATALOG["bdo_nvidia_profile"]
+        was_on = bool(history.active_for(t.id))
+
+        def work(progress=None):
+            if was_on:
+                engine.undo_tweak(t, progress)
+            nvprofile.save_custom(prof)
+            if was_on or t.applicable():
+                r = engine.apply_tweak(t, progress)
+                return r.msg or "Perfil aplicado no driver."
+            return "Perfil salvo. Ele é aplicado quando houver uma placa NVIDIA."
+        TaskDialog(self, "Perfil NVIDIA do BDO", work, on_done=self._nv_after).exec()
+
+    def _nv_import(self):
+        f, _ = QFileDialog.getOpenFileName(self, tr("Importar perfil NVIDIA"), "",
+                                           tr("Perfil do NVIDIA Profile Inspector") + " (*.nip);;XML (*.xml)")
+        if not f:
+            return
+        try:
+            profs = nvprofile.parse_nip(f)
+        except (OSError, ValueError) as e:
+            info(self, "Importar perfil NVIDIA", str(e))
+            return
+        prof = next((p for p in profs if any("blackdesert" in e.lower() for e in p.exes)), profs[0])
+        lines = "<br>".join(f"• {tr(n)}: <b>{tr(v)}</b>" for n, v in map(nvprofile.describe, prof.settings))
+        extra = ""
+        if prof.skipped:
+            extra = "<br><br>" + tr("Ignorados (não são números): {}").replace("{}", ", ".join(prof.skipped))
+        if not any("blackdesert" in e.lower() for e in prof.exes):
+            prof.exes = list(nvprofile.BDO_DEFAULT.exes)
+            extra += "<br><br>" + tr("O arquivo não cita o BlackDesert64.exe; os .exe do BDO serão usados.")
+        if not confirm(self, "Importar perfil NVIDIA",
+                       tr("Usar o perfil '{}' para o BDO e aplicar no driver?").replace("{}", prof.name)
+                       + "<br><br>" + lines + extra, yes="Aplicar"):
+            return
+        self._nv_switch(prof)
+
+    def _nv_default(self):
+        if not nvprofile.custom_file().exists():
+            info(self, "Perfil NVIDIA do BDO", "Já está usando o perfil que acompanha o app.")
+            return
+        self._nv_switch(None)
+
+    def _nv_panel(self):
+        import os
+        import subprocess
+        for exe in (r"%ProgramFiles%\NVIDIA Corporation\Control Panel Client\nvcplui.exe",):
+            p = os.path.expandvars(exe)
+            if os.path.exists(p):
+                subprocess.Popen([p])
+                return
+        try:
+            subprocess.Popen(["explorer.exe", "shell:AppsFolder\\NVIDIACorp.NVIDIAControlPanel_56jybvy8sckqj!"
+                              "NVIDIACorp.NVIDIAControlPanel"])
+        except OSError:
+            info(self, "Painel NVIDIA", "Não encontrei o Painel de Controle NVIDIA neste PC.")
 
     def _apply_pack(self):
         ts = [CATALOG[i] for i in PRESETS_BY_ID["bdo_guerra"].ids()]

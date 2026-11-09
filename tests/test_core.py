@@ -247,3 +247,105 @@ def test_full_catalog_has_essentials():
     ids = [a.winget for a in apps]
     assert "Microsoft.VCRedist.2015+.x64" in ids and "Microsoft.DirectX" in ids
     assert len(ids) == len(set(i.lower() for i in ids)) or True
+
+
+# ---------------------------------------------------------------- perfil NVIDIA (.nip + DRS falso)
+NIP = """<?xml version="1.0" encoding="utf-16"?>
+<ArrayOfProfile><Profile><ProfileName>Black Desert</ProfileName>
+<Executeables><string>blackdesert32.exe</string><string>blackdesert64.exe</string></Executeables>
+<Settings>
+<ProfileSetting><SettingNameInfo>Enable Ansel</SettingNameInfo><SettingID>276158834</SettingID>
+<SettingValue>0</SettingValue><ValueType>Dword</ValueType></ProfileSetting>
+<ProfileSetting><SettingNameInfo>Threaded optimization</SettingNameInfo><SettingID>549528094</SettingID>
+<SettingValue>1</SettingValue><ValueType>Dword</ValueType></ProfileSetting>
+<ProfileSetting><SettingNameInfo>Texto</SettingNameInfo><SettingID>1</SettingID>
+<SettingValue>abc</SettingValue><ValueType>String</ValueType></ProfileSetting>
+</Settings></Profile></ArrayOfProfile>"""
+
+
+class FakeDrs:
+    def __init__(self):
+        self.profiles = {}      # nome -> {"apps": set, "vals": {id: (valor, user)}, "predef": {id: valor}}
+        self.saved = 0
+
+    def find_app(self, exe):
+        return next((n for n, p in self.profiles.items() if exe.lower() in p["apps"]), None)
+
+    def find_profile(self, name):
+        return name if name in self.profiles else None
+
+    def profile_name(self, hp):
+        return hp
+
+    def create_profile(self, name):
+        self.profiles[name] = {"apps": set(), "vals": {}, "predef": {}}
+        return name
+
+    def delete_profile(self, hp):
+        del self.profiles[hp]
+
+    def add_app(self, hp, exe):
+        self.profiles[hp]["apps"].add(exe.lower())
+
+    def del_app(self, hp, exe):
+        self.profiles[hp]["apps"].discard(exe.lower())
+
+    def get(self, hp, sid):
+        p = self.profiles[hp]
+        if sid in p["vals"]:
+            return {"value": p["vals"][sid], "own": True, "user": True, "predef": sid in p["predef"]}
+        if sid in p["predef"]:
+            return {"value": p["predef"][sid], "own": True, "user": False, "predef": True}
+        return None
+
+    def set(self, hp, sid, v):
+        self.profiles[hp]["vals"][sid] = v
+
+    def reset(self, hp, sid, predefined):
+        self.profiles[hp]["vals"].pop(sid, None)
+
+    def save(self):
+        self.saved += 1
+
+
+def test_nip_parse_utf16():
+    from lolitos.modules import nvprofile as nv
+    profs = nv.parse_nip(NIP.encode("utf-16"))
+    assert len(profs) == 1
+    p = profs[0]
+    assert p.name == "Black Desert" and p.exes == ["blackdesert32.exe", "blackdesert64.exe"]
+    assert [(s.id, s.value) for s in p.settings] == [(276158834, 0), (549528094, 1)]
+    assert p.skipped == ["Texto"]
+    assert nv.describe(p.settings[1])[1] == "ligada"
+    assert len(nv.BDO_DEFAULT.settings) == 7
+
+
+def test_nv_apply_and_revert_new_profile():
+    from lolitos.modules import nvprofile as nv
+    d = FakeDrs()
+    prof = nv.parse_nip(NIP)[0]
+    assert nv.read_state(d, prof) == "off"
+    snap = nv.capture(d, prof)
+    nv.apply(d, prof)
+    assert nv.read_state(d, prof) == "on"
+    nv.revert(d, snap)
+    assert d.profiles == {}
+
+
+def test_nv_apply_and_revert_existing_profile():
+    from lolitos.modules import nvprofile as nv
+    d = FakeDrs()
+    d.create_profile("Black Desert Online")          # perfil da NVIDIA que já tem o exe
+    d.add_app("Black Desert Online", "BlackDesert64.exe")
+    d.profiles["Black Desert Online"]["predef"][549528094] = 2
+    d.set("Black Desert Online", 276158834, 1)        # valor que o usuário já tinha mudado
+    prof = nv.parse_nip(NIP)[0]
+    snap = nv.capture(d, prof)
+    assert snap["profile"] == "Black Desert Online" and snap["apps"] == ["blackdesert32.exe"]
+    nv.apply(d, prof)
+    assert "Black Desert" not in d.profiles
+    assert nv.read_state(d, prof) == "on"
+    nv.revert(d, snap)
+    p = d.profiles["Black Desert Online"]
+    assert p["vals"] == {276158834: 1} and p["apps"] == {"blackdesert64.exe"}
+    assert d.get("Black Desert Online", 549528094)["value"] == 2

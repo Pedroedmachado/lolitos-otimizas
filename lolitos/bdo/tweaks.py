@@ -4,7 +4,8 @@ from __future__ import annotations
 from lolitos.bdo import game
 from lolitos.core.actions import Action, ActionError, Reg
 from lolitos.core.system import IS_WIN
-from lolitos.core.tweaks import ADVANCED, ESSENTIAL, Tweak, register
+from lolitos.core.tweaks import ADVANCED, ESSENTIAL, RECOMMENDED, Tweak, register
+from lolitos.modules import pcprofile as pc
 
 IFEO = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
 
@@ -67,7 +68,63 @@ class DefenderExclusion(Action):
         powershell(f"Remove-MpPreference -ExclusionPath {_ps_quote(snap.get('path', ''))}", timeout=60)
 
 
+class NvidiaProfile(Action):
+    """Grava o perfil do BDO no driver NVIDIA (Painel de Controle NVIDIA › Configurações de programa)."""
+
+    def describe(self):
+        from lolitos.modules import nvprofile
+        return f"perfil NVIDIA '{nvprofile.bdo_profile().name}'"
+
+    def applicable(self):
+        from lolitos.modules import nvprofile
+        try:
+            if not pc.nvidia():
+                return False
+        except Exception:  # noqa: BLE001
+            pass
+        return nvprofile.available()
+
+    def is_applied(self):
+        from lolitos.modules import nvprofile
+        with nvprofile.Drs() as d:
+            return nvprofile.read_state(d, nvprofile.bdo_profile()) == "on"
+
+    def capture(self):
+        from lolitos.modules import nvprofile
+        try:
+            with nvprofile.Drs() as d:
+                return nvprofile.capture(d, nvprofile.bdo_profile())
+        except nvprofile.NvError as e:
+            raise ActionError(str(e)) from e
+
+    def apply(self):
+        from lolitos.modules import nvprofile
+        try:
+            with nvprofile.Drs() as d:
+                nvprofile.apply(d, nvprofile.bdo_profile())
+        except nvprofile.NvError as e:
+            raise ActionError(str(e)) from e
+
+    def revert(self, snap):
+        from lolitos.modules import nvprofile
+        try:
+            with nvprofile.Drs() as d:
+                nvprofile.revert(d, snap)
+        except nvprofile.NvError as e:
+            raise ActionError(str(e)) from e
+
+
 register(
+    Tweak("bdo_nvidia_profile", "Perfil do BDO no Painel de Controle NVIDIA",
+          "Grava no driver as configurações 3D do Black Desert (BlackDesert64.exe, 32 bits e launcher): taxa de "
+          "atualização mais alta, otimização encadeada ligada, Ansel desligado, correção de gama sempre ligada e "
+          "G-SYNC desligado no jogo. Usa a interface oficial do driver; nada é injetado no jogo.",
+          "bdo", [NvidiaProfile()],
+          RECOMMENDED, when=pc.nvidia, admin=True,
+          gain="O driver já abre o BDO com essas opções, sem precisar mexer no Painel NVIDIA. Dá para trocar "
+               "pelo seu próprio arquivo .nip na tela do Black Desert.",
+          loss="Desliga o G-SYNC só no BDO (o resto do PC continua igual). Se você usa monitor G-SYNC e prefere "
+               "ele ligado no jogo, importe um .nip seu ou deixe este ajuste desligado."),
     Tweak("bdo_priority", "BDO sempre em prioridade alta",
           "Registra no Windows (IFEO › PerfOptions) que o BlackDesert64.exe abre com prioridade de CPU alta — vale mesmo com este app fechado. Não injeta nada no jogo.",
           "bdo", [Reg("HKLM", IFEO + r"\BlackDesert64.exe\PerfOptions", "CpuPriorityClass", 3)],
