@@ -1,7 +1,7 @@
 ﻿; Instalador do Chinese Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Chinese Control"
-#define AppVersion "1.9.0"
+#define AppVersion "2.0.0"
 #define AppExe "ChineseControl.exe"
 #define AppId "ChineseControl"
 ; nomes antigos do app (até a 1.7.x: Lolitos Control; até a 1.3.x: Lolitos Otimizações)
@@ -76,7 +76,7 @@ es.LangCode=es
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIcon}"
-Name: "autostart"; Description: "{cm:AutoStart}"; Flags: unchecked
+Name: "autostart"; Description: "{cm:AutoStart}"
 
 [Files]
 Source: "dist\ChineseControl\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -100,7 +100,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 ; tarefa agendada: abre já como administrador no logon, sem pedir o UAC toda vez
-Filename: "schtasks.exe"; Parameters: "/Create /F /RL HIGHEST /SC ONLOGON /DELAY 0000:15 /TN {#AppId} /TR ""\""{app}\{#AppExe}\"" --tray"""; Flags: runhidden; Tasks: autostart
+; (pelo PowerShell para valer também na bateria e sem o limite de 3 dias que o schtasks põe)
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$u=[Security.Principal.WindowsIdentity]::GetCurrent().Name;$a=New-ScheduledTaskAction -Execute '{app}\{#AppExe}' -Argument '--tray';$t=New-ScheduledTaskTrigger -AtLogOn -User $u; $t.Delay='PT15S';$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 5;$p=New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '{#AppId}' -Action $a -Trigger $t -Settings $s -Principal $p -Force"""; Flags: runhidden; Tasks: autostart
 Filename: "{app}\{#AppExe}"; Description: "{cm:OpenNow,{#AppName}}"; Flags: nowait postinstall skipifsilent shellexec
 ; atualização automática (instalador rodado pelo próprio app com /VERYSILENT /relaunch=1): reabre o app
 Filename: "{app}\{#AppExe}"; Flags: nowait shellexec; Check: ShouldRelaunch

@@ -23,9 +23,17 @@ class SettingsPage(Page):
         self.lang.setCurrentIndex(list(LANGS).index(current()))
         self.lang.currentIndexChanged.connect(self._lang)
         c.lay.addLayout(hrow(label("Idioma / Language / Idioma", wrap=False), self.lang, None))
-        dark = QCheckBox("Tema escuro")
-        dark.setChecked(settings.get("theme") == "dark")
-        dark.toggled.connect(lambda v: (settings.set("theme", "dark" if v else "light"), self.main.apply_theme()))
+        from lolitos.ui.theme import THEME_NAMES
+        self.theme_cb = QComboBox()
+        for key, name in THEME_NAMES:
+            self.theme_cb.addItem(name, key)
+        keys = [k for k, _ in THEME_NAMES]
+        self.theme_cb.setCurrentIndex(keys.index(settings.get("theme")) if settings.get("theme") in keys else 2)
+        self.theme_cb.currentIndexChanged.connect(lambda _: self.main.set_theme(self.theme_cb.currentData()))
+        c.lay.addLayout(hrow(label("Tema", wrap=False), self.theme_cb, None))
+        fx = QCheckBox("Efeitos visuais: vidro e animações (desligue em PCs mais fracos)")
+        fx.setChecked(settings.get("visual_effects", True))
+        fx.toggled.connect(lambda v: (settings.set("visual_effects", v), self.main.apply_theme()))
         tray = QCheckBox("Ao fechar a janela, continuar na bandeja (o overlay e a tecla continuam funcionando)")
         tray.setChecked(settings.get("tray_on_close"))
         tray.toggled.connect(lambda v: settings.set("tray_on_close", v))
@@ -33,8 +41,9 @@ class SettingsPage(Page):
         rp.setChecked(settings.get("restore_point_before"))
         rp.toggled.connect(lambda v: settings.set("restore_point_before", v))
         auto = QCheckBox("Iniciar com o Windows (minimizado na bandeja, já como administrador)")
-        run_async(startup.self_autostart_enabled, on_done=auto.setChecked)
-        auto.toggled.connect(startup.self_autostart)
+        run_async(startup.self_autostart_enabled,
+                  on_done=lambda v: (auto.blockSignals(True), auto.setChecked(bool(v)), auto.blockSignals(False)))
+        auto.toggled.connect(lambda on: run_async(startup.self_autostart, on))
         free = QCheckBox("'Preparar e jogar': liberar RAM antes de abrir o jogo")
         free.setChecked(settings.get("play_free_ram"))
         free.toggled.connect(lambda v: settings.set("play_free_ram", v))
@@ -44,7 +53,7 @@ class SettingsPage(Page):
         upd = QCheckBox("Procurar atualização no GitHub ao abrir o app")
         upd.setChecked(settings.get("check_updates", True))
         upd.toggled.connect(lambda v: settings.set("check_updates", v))
-        for w in (dark, tray, rp, auto, free, plan, upd):
+        for w in (fx, tray, rp, auto, free, plan, upd):
             c.lay.addWidget(w)
         c.lay.addLayout(hrow(button("Abrir pasta de dados", on_click=lambda: os.startfile(str(data_dir()))), None))
         self.body.addWidget(c)

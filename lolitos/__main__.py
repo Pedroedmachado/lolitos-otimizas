@@ -53,14 +53,18 @@ def main() -> int:
 
         def migrate():   # nomes antigos do app: tarefa de inicialização e plano de energia
             from lolitos.core.actions import rename_legacy_power_plans
-            from lolitos.modules.startup import migrate_old_autostart
-            for fn in (migrate_old_autostart, rename_legacy_power_plans):
+            from lolitos.modules.startup import ensure_autostart, migrate_old_autostart
+            for fn in (migrate_old_autostart, ensure_autostart, rename_legacy_power_plans):
                 try:
                     fn()
                 except Exception:  # noqa: BLE001
                     logging.getLogger("lolitos").exception("migração %s", fn.__name__)
         threading.Thread(target=migrate, daemon=True).start()
-    theme.use(settings.get("theme"))
+    if not settings.get("theme_v2"):      # até a 1.9 'dark' era o azul de hoje: quem escolheu continua igual
+        if settings.get("theme") == "dark":
+            settings.set("theme", "blue")
+        settings.set("theme_v2", True)
+    theme.use(settings.get("theme"), settings.get("visual_effects", True))
     app.setStyleSheet(theme.qss())
     w = MainWindow()
     if "--tray" not in sys.argv:

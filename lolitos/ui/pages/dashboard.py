@@ -1,6 +1,7 @@
 """Painel: saudação, pontuação, Boost em um clique, cartões rápidos, Windows recém-formatado e monitor ao vivo."""
 from __future__ import annotations
 
+import logging
 import os
 import time
 
@@ -52,12 +53,35 @@ def pc_analysis():
     return p, pcprofile.advice(), rec
 
 
+_SCORE_POOL = None
+
+
+def _score_pool():
+    global _SCORE_POOL
+    if _SCORE_POOL is None:
+        from PySide6.QtCore import QThreadPool
+        _SCORE_POOL = QThreadPool()
+        _SCORE_POOL.setMaxThreadCount(2)
+    return _SCORE_POOL
+
+
+def _safe_status(t) -> str:
+    try:
+        return t.status()
+    except Exception:  # noqa: BLE001 — um ajuste com leitura quebrada não pode travar a análise inteira
+        return "off"
+
+
 def compute_score():
     ids = boost_ids()
-    st = {i: CATALOG[i].status() for i in ids}
+    st = {i: _safe_status(CATALOG[i]) for i in ids}
     valid = [s for s in st.values() if s != "na"]
     ratio = sum(1 for s in valid if s == "on") / len(valid) if valid else 1
-    checks = checkup.run_checkup()
+    try:
+        checks = checkup.run_checkup()
+    except Exception:  # noqa: BLE001 — sem o check-up a nota usa só os ajustes
+        logging.getLogger("lolitos").exception("check-up do Painel")
+        checks = []
     pending = sum(1 for s in valid if s != "on")
     pend_ids = [i for i, s in st.items() if s not in ("on", "na")]
     return checkup.score(checks, ratio), pending, checks, pend_ids
@@ -191,7 +215,7 @@ class Dashboard(Page):
         fresh = Card(hero=True)
         art = QHBoxLayout()
         art.addStretch()
-        art.addWidget(IconTile("windows", 96, 40, "#ffffff"))
+        art.addWidget(IconTile("windows", 96, 40))
         art.addStretch()
         fresh.lay.addLayout(art)
         fresh.lay.addSpacing(8)
@@ -270,7 +294,9 @@ class Dashboard(Page):
         self.pc_lbl = label("Analisando o hardware…", rich=True)
         self.pc_card.lay.addWidget(self.pc_lbl)
         self.body.addWidget(self.pc_card)
-        run_async(pc_analysis, on_done=self._pc)
+        run_async(pc_analysis, on_done=self._pc, on_error=lambda e: (
+            self.pc_lbl.setText(tr("Não deu para ler o hardware agora; tentando de novo…")),
+            QTimer.singleShot(8000, lambda: run_async(pc_analysis, on_done=self._pc))))
 
         self.tab = 0
         self._prev = {}
@@ -311,9 +337,37 @@ class Dashboard(Page):
             lines.append(f"<br><b>{t}</b><br><span style='color:{C['muted']}'>{txt}</span>")
         self.pc_lbl.setText("<br>".join(lines))
 
-    def refresh(self):
-        run_async(compute_score, on_done=self._scored)
-        run_async(quick_stats, on_done=self._quick, _pool=status_pool())
+    SCORE_TIMEOUT_MS = 120_000
+
+    def refresh(self, attempt: int = 0):
+        """A análise sempre termina: roda numa fila só dela, tenta de novo se falhar e, se passar de 2 minutos
+        sem resposta, começa de novo (antes ela podia ficar presa em 'Analisando…')."""
+        self._score_gen = getattr(self, "_score_gen", 0) + 1
+        gen = self._score_gen
+
+        def done(r):
+            if gen == self._score_gen:
+                self._score_watch.stop()
+                self._scored(r)
+
+        def failed(err):
+            if gen != self._score_gen:
+                return
+            self._score_watch.stop()
+            logging.getLogger("lolitos").warning("análise do Painel falhou (%s): %s", attempt + 1, err)
+            if attempt < 3:
+                self.pend_sub.setText(tr("A análise falhou; tentando de novo…"))
+                QTimer.singleShot(5000 * (attempt + 1), lambda: self.refresh(attempt + 1))
+            else:
+                self._score_failed()
+        self._score_fail = failed
+        if not hasattr(self, "_score_watch"):
+            self._score_watch = QTimer(self)
+            self._score_watch.setSingleShot(True)
+            self._score_watch.timeout.connect(lambda: self._score_fail("tempo esgotado"))
+        self._score_watch.start(self.SCORE_TIMEOUT_MS)
+        run_async(compute_score, on_done=done, on_error=failed, _pool=_score_pool())
+        run_async(quick_stats, on_done=self._quick, on_error=lambda e: None, _pool=status_pool())
 
     def _quick(self, q):
         self.v_points.setText("—" if q.get("points") is None else str(q["points"]))
@@ -356,8 +410,18 @@ class Dashboard(Page):
         TaskDialog(self, tr(t.title), bulk_apply, [t], restore_point=False,
                    on_done=lambda _: (self.refresh(), self.main and self.main.changed())).exec()
 
+    def _score_failed(self):
+        """Três tentativas sem resposta: libera o Painel mesmo assim e tenta de novo daqui a 5 minutos."""
+        self.boost_btn.setEnabled(True)
+        self.boost_btn.setText(f"⚡  {tr('Boost agora')}")
+        self.score_lbl.setText("—")
+        self.pend_title.setText(tr("ANÁLISE INDISPONÍVEL"))
+        self.pend_sub.setText(tr("O Windows demorou para responder. Vou tentar de novo em alguns minutos."))
+        QTimer.singleShot(300_000, self.refresh)
+
     def _scored(self, r):
         score, pending, checks, pend_ids = r
+        self.boost_btn.setEnabled(True)
         self._actions(pend_ids)
         self.score, self.pending_n = score, pending
         self.gauge.set(score)

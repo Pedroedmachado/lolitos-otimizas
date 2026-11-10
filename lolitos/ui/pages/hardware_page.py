@@ -63,6 +63,14 @@ class MyPcPage(Page):
             w = self.info_l.takeAt(0).widget()
             if w:
                 w.deleteLater()
+        from lolitos.ui.board import BoardView
+        bc = Card()
+        bc.lay.addWidget(label("Sua placa-mãe", "h2"))
+        bc.lay.addWidget(label("Passe o mouse em cada peça para ver os detalhes.", "muted"))
+        self.board = BoardView(bc)
+        self.board.set_data(d, hwinfo.ram_summary(d))
+        bc.lay.addWidget(self.board)
+        self.info_l.addWidget(bc)
         grid = QGridLayout()
         cards = []
         for cpu in d.get("cpu", []):

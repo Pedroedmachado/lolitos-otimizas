@@ -1,11 +1,26 @@
-"""Cores e folha de estilo — azul-escuro (paleta no estilo do Galdino Control)."""
+"""Cores e folha de estilo. Três temas — Escuro, Claro (vidro líquido) e Azul — com visual de vidro: fundo com
+brilho suave e cartões translúcidos. 'Efeitos visuais' desligado volta às cores sólidas (para PCs mais fracos).
 
-DARK = {
+C guarda só cores sólidas (#rrggbb), que também são usadas nos desenhos feitos à mão (gráficos, placa-mãe).
+As transparências do vidro ficam nas chaves g* e só entram na folha de estilo."""
+
+BLUE = {
     "bg": "#050b16", "panel": "#0a1526", "panel2": "#0f1e36", "border": "#16304f", "border2": "#1d3d6b",
     "text": "#f2f6fc", "muted": "#8597b0", "accent": "#1e9bff", "accent2": "#5cc8ff", "deep": "#0a6cff",
     "on_accent": "#ffffff", "gold": "#f5b82e",
     "ok": "#4ade80", "warn": "#f5b82e", "bad": "#ff4d5e", "info": "#22c3ff",
     "hero1": "#0c2a55", "hero2": "#0a1526", "hero_border": "#1d3d6b", "deepbg": "#0c2a55",
+    "gbg1": "#0f3166", "gbg2": "#050b16", "glass": "rgba(13, 30, 56, 0.62)", "glass2": "rgba(20, 44, 82, 0.55)",
+    "gborder": "rgba(110, 190, 255, 0.16)", "gside": "rgba(8, 20, 38, 0.72)", "ghero": "rgba(16, 52, 104, 0.55)",
+}
+DARK = {
+    "bg": "#090a0d", "panel": "#121419", "panel2": "#1a1d24", "border": "#24272f", "border2": "#343945",
+    "text": "#f2f4f8", "muted": "#8d94a3", "accent": "#1e9bff", "accent2": "#5cc8ff", "deep": "#0a6cff",
+    "on_accent": "#ffffff", "gold": "#f5b82e",
+    "ok": "#4ade80", "warn": "#f5b82e", "bad": "#ff4d5e", "info": "#22c3ff",
+    "hero1": "#16213a", "hero2": "#121419", "hero_border": "#2a3550", "deepbg": "#15253f",
+    "gbg1": "#18233a", "gbg2": "#090a0d", "glass": "rgba(255, 255, 255, 0.045)", "glass2": "rgba(255, 255, 255, 0.07)",
+    "gborder": "rgba(255, 255, 255, 0.09)", "gside": "rgba(14, 16, 21, 0.78)", "ghero": "rgba(40, 70, 130, 0.30)",
 }
 LIGHT = {
     "bg": "#edf3fb", "panel": "#ffffff", "panel2": "#e6eef9", "border": "#c9d7ea", "border2": "#9fb6d6",
@@ -13,13 +28,29 @@ LIGHT = {
     "on_accent": "#ffffff", "gold": "#c98a00",
     "ok": "#059669", "warn": "#b7791f", "bad": "#e11d48", "info": "#0891b2",
     "hero1": "#d6e6ff", "hero2": "#ffffff", "hero_border": "#9fb6d6", "deepbg": "#d6e6ff",
+    "gbg1": "#c9dcff", "gbg2": "#eef2f8", "glass": "rgba(255, 255, 255, 0.58)", "glass2": "rgba(255, 255, 255, 0.78)",
+    "gborder": "rgba(255, 255, 255, 0.95)", "gside": "rgba(255, 255, 255, 0.55)", "ghero": "rgba(214, 230, 255, 0.70)",
 }
-C = dict(DARK)
+THEMES = {"dark": DARK, "light": LIGHT, "blue": BLUE}
+THEME_NAMES = [("dark", "Escuro"), ("light", "Claro"), ("blue", "Azul")]
+DEFAULT_THEME = "blue"
+C = dict(BLUE)
+EFFECTS = [True]     # vidro e animações (Configurações › Efeitos visuais)
 
 
-def use(theme: str) -> None:
+def use(theme: str, effects: bool | None = None) -> None:
     C.clear()
-    C.update(LIGHT if theme == "light" else DARK)
+    C.update(THEMES.get(theme, BLUE))
+    if effects is not None:
+        EFFECTS[0] = bool(effects)
+
+
+def effects() -> bool:
+    return EFFECTS[0]
+
+
+def is_light() -> bool:
+    return C.get("bg", "#000").lower() == LIGHT["bg"]
 
 
 def qss() -> str:
@@ -82,6 +113,10 @@ QFrame#tcardrec {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {c['h
     border: 1px solid {c['border2']}; border-radius: 12px; }}
 QFrame#tcard:hover, QFrame#tcardrec:hover {{ border-color: {c['accent']}; }}
 QLabel#tctitle {{ font-size: 11pt; font-weight: 800; }}
+QLabel#goaltag {{ border-radius: 4px; padding: 1px 7px; font-size: 7.5pt; font-weight: 700; }}
+QPushButton#link {{ background: transparent; border: none; color: {c['accent2']}; padding: 0; font-size: 8.5pt;
+    text-align: left; }}
+QPushButton#link:hover {{ text-decoration: underline; }}
 QLabel#tcwarn {{ color: {c['gold']}; font-size: 8.5pt; }}
 QLabel#tagrec {{ color: {c['accent2']}; background: {c['deepbg']}; border-radius: 4px; padding: 2px 7px;
     font-size: 8pt; font-weight: 800; }}
@@ -153,4 +188,36 @@ QMenu {{ background: {c['panel']}; border: 1px solid {c['border']}; }}
 QMenu::item {{ padding: 6px 18px; }}
 QMenu::item:selected {{ background: {c['panel2']}; }}
 QMessageBox {{ background: {c['bg']}; }}
+""" + (_glass(c) if EFFECTS[0] else "")
+
+
+def _glass(c) -> str:
+    """Vidro: o fundo das telas ganha um brilho que fica parado enquanto rola, e os cartões ficam translúcidos.
+    O fundo é pintado pela área de rolagem (nunca transparente de verdade, para não deixar rastro ao rolar)."""
+    glow = (f"qradialgradient(cx:0.92, cy:0.0, radius:1.15, fx:0.92, fy:0.0, stop:0 {c['gbg1']}, "
+            f"stop:0.55 {c['gbg2']}, stop:1 {c['gbg2']})")
+    side = (f"qradialgradient(cx:0.0, cy:1.0, radius:1.3, fx:0.0, fy:1.0, stop:0 {c['gbg1']}, "
+            f"stop:0.7 {c['bg']}, stop:1 {c['bg']})")
+    return f"""
+QMainWindow, QWidget#root {{ background: {side}; }}
+QScrollArea > QWidget#qt_scrollarea_viewport {{ background: {glow}; }}
+QWidget#page {{ background: transparent; }}
+QScrollBar:vertical, QScrollBar::groove:vertical, QScrollBar:horizontal {{ background: transparent; }}
+QFrame#sidebar {{ background: {c['gside']}; border-right: 1px solid {c['gborder']}; }}
+QWidget#navlist, QScrollArea#navscroll, QScrollArea#navscroll > QWidget#qt_scrollarea_viewport {{
+    background: transparent; }}
+QFrame#card, QFrame#tcard {{ background: {c['glass']}; border: 1px solid {c['gborder']}; }}
+QFrame#card:hover, QFrame#tcard:hover {{ background: {c['glass2']}; border-color: {c['accent']}; }}
+QFrame#hero, QFrame#tcardrec {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {c['ghero']},
+    stop:1 {c['glass']}); border: 1px solid {c['gborder']}; }}
+QFrame#tcardrec:hover {{ border-color: {c['accent']}; }}
+QFrame#icontile {{ background: {c['glass2']}; border: 1px solid {c['gborder']}; }}
+QPushButton {{ background: {c['glass2']}; border: 1px solid {c['gborder']}; }}
+QPushButton#chip, QPushButton#seg, QLabel#pill, QPushButton#update {{ background: {c['glass']};
+    border: 1px solid {c['gborder']}; }}
+QPushButton#chip:checked, QPushButton#seg:checked {{ background: {c['deepbg']}; border-color: {c['accent']}; }}
+QPushButton#nav:hover {{ background: {c['glass2']}; }}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {{ background: {c['glass2']};
+    border: 1px solid {c['gborder']}; }}
+QTableWidget, QTreeWidget, QListWidget {{ background: {c['glass']}; border: 1px solid {c['gborder']}; }}
 """

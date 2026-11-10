@@ -1,7 +1,7 @@
 # Chinese Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 1.9.0. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 2.0.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-1.9.0-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-2.0.0-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -47,6 +47,26 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 2.0.0
+
+* **Visual de vidro com animações**, em três temas: **Escuro**, **Claro** (vidro líquido) e **Azul**. Troque em
+  Configurações ou pelo botão *Tema* no fim do menu. O menu recolhido cresce suavemente ao passar o mouse e as
+  telas entram com uma animação curta. Em PCs mais fracos, desligue em Configurações › *Efeitos visuais*.
+* **Clipes** (Ferramentas): **Alt+Home** salva os últimos segundos do jogo e **Alt+End** começa/para uma
+  gravação, com o **som só do jogo** (Windows 11; no Windows 10 antigo, o som do PC). A placa de vídeo codifica
+  (NVENC, AMF ou Quick Sync) e o vídeo sai pronto na hora. O gravador (ffmpeg) é baixado pelo winget só quando você
+  ativa os Clipes, e só roda com um jogo em primeiro plano.
+* **Meu PC:** desenho da placa-mãe com o processador, as memórias nos encaixes, a placa de vídeo, os SSDs e o
+  chipset. Passe o mouse em cada peça para ver os detalhes.
+* **Ajustes com etiquetas** (FPS, Input lag, Rede, Limpeza, Privacidade) e **filtro por objetivo**. Cada cartão diz
+  se foi ativado pelo Chinese Control ou se já estava assim, e o **Saiba mais** mostra exatamente o que muda.
+* **Iniciar com o Windows** vem marcado no instalador e fica na bandeja. Agora abre também no notebook na bateria e
+  não para depois de dias ligado (a tarefa antiga é recriada sozinha).
+* **Atualizações mais confiáveis:** tenta de novo quando a primeira tentativa falha e confere a cada 6 horas
+  enquanto o app está na bandeja.
+* **Correção:** o Painel podia ficar parado em "Analisando" e o Boost não liberava. Agora a análise sempre termina
+  e, se algo falhar, o app tenta de novo sozinho.
 
 ## Novidades da 1.9.0
 

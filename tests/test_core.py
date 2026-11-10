@@ -398,3 +398,83 @@ def test_affinity_modes():
     assert affinity_cpus("") is None
     n = psutil.cpu_count(logical=True)
     assert affinity_cpus("vcache") == list(range(n // 2))
+
+
+# ---------------------------------------------------------------- 2.0: clipes, placa-mãe, objetivos, updater
+def test_clips_pick_last(tmp_path):
+    from lolitos.modules import clips
+    lst = tmp_path / "list.csv"
+    lst.write_text("seg_006.ts,6.0,7.0\nseg_007.ts,7.0,8.0\nseg_000.ts,8.0,9.0\nseg_001.ts,9.0,10.0\n")
+    rows = clips.read_list(lst)
+    assert [r[0] for r in rows] == ["seg_006.ts", "seg_007.ts", "seg_000.ts", "seg_001.ts"]
+    assert clips.pick_last(rows, 2) == ["seg_000.ts", "seg_001.ts"]     # ordem do vídeo, não do nome
+    assert clips.pick_last([], 5) == []
+    assert clips.safe_name("Black/Desert:64") == "BlackDesert64"
+    assert "-c:v" in clips.video_args("h264_nvenc", "alta") and "19" in clips.video_args("h264_nvenc", "alta")
+
+
+def test_audio_silence_padding():
+    from lolitos.modules.procaudio import silence_needed
+    assert silence_needed(0.0, 1.0, 48000, 48000) == 0           # em dia
+    assert silence_needed(0.0, 1.0, 0, 48000, slack=0) == 48000   # um segundo sem pacotes: 1 s de silêncio
+
+
+def test_board_parts():
+    from lolitos.ui.board import _fill_order, build_parts
+    d = {"cpu": [{"Name": "AMD Ryzen 7 7800X3D 8-Core Processor", "NumberOfCores": 8,
+                  "NumberOfLogicalProcessors": 16}],
+         "ram": [{"Capacity": 17179869184, "DeviceLocator": "DIMM 1"}, {"Capacity": 17179869184,
+                                                                       "DeviceLocator": "DIMM 2"}],
+         "slots": 4, "gpu": [{"Name": "NVIDIA GeForce RTX 4070"}],
+         "disks": [{"FriendlyName": "SSD", "BusType": 17, "Size": 10 ** 12}]}
+    parts = {p.key: p for p in build_parts(d, None)}
+    assert parts["cpu"].title == "AMD Ryzen 7 7800X3D"
+    assert parts["ram1"].filled and parts["ram3"].filled and not parts["ram0"].filled
+    assert parts["gpu"].title == "GeForce RTX 4070" and "m20" in parts and "chipset" in parts
+    assert _fill_order(4, 2) == [1, 3]
+
+
+def test_goals():
+    from lolitos.catalog.goals import goals
+    from lolitos.core.tweaks import CATALOG
+    assert "fps" in goals(CATALOG["power_plan"]) and "input" in goals(CATALOG["power_plan"])
+    assert goals(CATALOG["nagle_off"]) == ["input", "rede"]
+    assert goals(CATALOG["telemetry_min"]) == ["privacidade"]
+    assert goals(CATALOG["dark_mode"]) == []
+
+
+def test_updater_retry():
+    import urllib.error
+    from lolitos.modules import updater
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise urllib.error.URLError("rede caiu")
+        return "ok"
+    assert updater._retry(flaky, sleep=lambda s: None) == "ok" and len(calls) == 3
+
+    def notfound():
+        raise urllib.error.HTTPError("u", 404, "x", None, None)
+    import pytest
+    with pytest.raises(urllib.error.HTTPError):
+        updater._retry(notfound, sleep=lambda s: None)
+
+
+def test_autostart_script():
+    from lolitos.modules.startup import autostart_script
+    s = autostart_script(r"C:\Program Files\Chinese Control\ChineseControl.exe", "--tray", "ChineseControl")
+    assert "-AllowStartIfOnBatteries" in s and "-DontStopIfGoingOnBatteries" in s
+    assert "[TimeSpan]::Zero" in s and "-RunLevel Highest" in s
+
+
+def test_themes():
+    from lolitos.ui import theme
+    for key, _ in theme.THEME_NAMES:
+        theme.use(key, True)
+        q = theme.qss()
+        assert "qradialgradient" in q and theme.C["bg"].startswith("#")
+        theme.use(key, False)
+        assert "qradialgradient" not in theme.qss()
+    theme.use("blue", True)

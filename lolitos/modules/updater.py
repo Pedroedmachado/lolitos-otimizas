@@ -12,6 +12,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -27,6 +29,9 @@ ASSET_RE = re.compile(r"^(?:Chinese|Lolitos)Control-(\d+\.\d+\.\d+)-Setup\.exe$"
 ALLOWED_HOSTS = ("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 UA = {"User-Agent": f"{APP_ID}/{VERSION}", "Accept": "application/vnd.github+json"}
 MAX_SIZE = 300 * 1024 * 1024
+CHECK_EVERY_H = 6          # enquanto o app está aberto (ou na bandeja)
+RETRY_WAITS = (0, 5, 20)   # segundos antes de cada tentativa
+_NET_ERRORS = (urllib.error.URLError, TimeoutError, ConnectionError, OSError)
 
 
 def parse_version(v: str) -> tuple[int, ...]:
@@ -59,6 +64,27 @@ def check(timeout: float = 10) -> dict | None:
     return None
 
 
+def _retry(fn, *args, waits=RETRY_WAITS, sleep=time.sleep, **kw):
+    """Tenta de novo quando é a rede que falha (Wi-Fi acordando, GitHub lento). Erros de conferência não repetem."""
+    last = None
+    for w in waits:
+        if w:
+            sleep(w)
+        try:
+            return fn(*args, **kw)
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 404):      # limite da API ou repositório fora do ar: tentar de novo não ajuda
+                raise
+            last = e
+        except _NET_ERRORS as e:
+            last = e
+    raise last
+
+
+def check_retry(timeout: float = 15) -> dict | None:
+    return _retry(check, timeout)
+
+
 def _host_ok(url: str) -> bool:
     u = urlparse(url)
     return u.scheme == "https" and any(u.hostname == h or (u.hostname or "").endswith("." + h)
@@ -66,6 +92,11 @@ def _host_ok(url: str) -> bool:
 
 
 def download(info: dict, progress=None) -> Path:
+    """Baixa e confere; se a conexão cair no meio, tenta de novo (até 3 vezes)."""
+    return _retry(_download, info, progress)
+
+
+def _download(info: dict, progress=None) -> Path:
     if not _host_ok(info["url"]):
         raise RuntimeError("Endereço de download inesperado; atualização cancelada.")
     if info["size"] <= 0 or info["size"] > MAX_SIZE:

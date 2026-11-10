@@ -8,7 +8,8 @@ from lolitos.core.system import data_dir
 
 _LOCK = threading.RLock()
 DEFAULTS = {
-    "theme": "dark",
+    "theme": "blue",          # dark (Escuro) | light (Claro) | blue (Azul)
+    "visual_effects": True,   # vidro e animações
     "tray_on_close": True,
     "restore_point_before": True,
     "overlay_hotkey": "Ctrl+Shift+F10",

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMainWindow, QMenu,
                                QPushButton, QScrollArea, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget)
 
@@ -30,6 +30,7 @@ def _pages():
     from lolitos.ui.pages.fresh_page import FreshPage
     from lolitos.ui.pages.opt_pages import (DefenderAiPage, GpuComparePage, GpuPage, KeyboardPage, MousePage,
                                             WindowsPage)
+    from lolitos.ui.pages.clips_page import ClipsPage
     from lolitos.ui.pages.overlay_page import OverlayPage
     from lolitos.ui.pages.profiles_page import ProfilesPage
     from lolitos.ui.pages.restore_page import RestorePage
@@ -53,7 +54,8 @@ def _pages():
             ("apps", "apps", "Instalar apps", AppsPage), ("limpeza", "clean", "Limpeza", CleanupPage),
             ("inicializacao", "power", "Inicialização", StartupPage)]),
         ("FERRAMENTAS", [
-            ("overlay", "overlay", "Overlay de jogo", OverlayPage), ("teste_mouse", "mouse", "Teste do mouse", MouseTestPage),
+            ("overlay", "overlay", "Overlay de jogo", OverlayPage), ("clipes", "clips", "Clipes", ClipsPage),
+            ("teste_mouse", "mouse", "Teste do mouse", MouseTestPage),
             ("teste_monitor", "monitor", "Teste de monitor", MonitorTestPage),
             ("velocidade", "download", "Teste de velocidade", SpeedTestPage),
             ("perda", "network", "Perda de pacotes", PacketLossPage),
@@ -66,6 +68,11 @@ def _pages():
 
 # nomes antigos (atalhos, bandeja, versões anteriores) → telas novas
 ALIASES = {"ajustes": "windows", "hardware": "meupc", "ferramentas": "manutencao", "rede": "perda"}
+
+
+def updater_every_ms() -> int:
+    from lolitos.modules.updater import CHECK_EVERY_H
+    return CHECK_EVERY_H * 3600 * 1000
 
 
 class MainWindow(QMainWindow):
@@ -132,7 +139,7 @@ class MainWindow(QMainWindow):
             self.nav_sections.append(sec)
             nl.addWidget(sec)
             for key, ico, text, cls in items:
-                b = NavButton(ico, text, special=key == "completa", badge="NOVO" if key == "comparar" else "")
+                b = NavButton(ico, text, special=key == "completa", badge="NOVO" if key == "clipes" else "")
                 b.clicked.connect(lambda _=False, k=key: self.go(k))
                 self.group.addButton(b, i)
                 self.nav_buttons.append(b)
@@ -145,6 +152,12 @@ class MainWindow(QMainWindow):
         nl.addStretch()
         nav_scroll.setWidget(nav_w)
         sl.addWidget(nav_scroll, 1)
+        self.theme_btn = QPushButton()
+        self.theme_btn.setObjectName("update")
+        self.theme_btn.setCursor(Qt.PointingHandCursor)
+        self.theme_btn.clicked.connect(self._theme_menu)
+        sl.addWidget(self.theme_btn)
+        self._theme_text()
         self.update_btn = QPushButton("⟳  Procurar atualização")
         self.update_btn.setObjectName("update")
         self.update_btn.setCursor(Qt.PointingHandCursor)
@@ -153,6 +166,8 @@ class MainWindow(QMainWindow):
         sl.addWidget(self.update_btn)
         lay.addWidget(side)
         lay.addWidget(self.stack, 1)
+        self._collapsed, self._peek = False, False
+        side.installEventFilter(self)
         if settings.get("nav_collapsed"):
             self._set_collapsed(True)
             settings.set("nav_manual", True)
@@ -164,13 +179,20 @@ class MainWindow(QMainWindow):
         self._tray()
         self.go("painel")
         self.register_hotkey()
+        self.clips = None
+        if settings.get("clips_enabled"):
+            self.start_clips()
         self.prebuild_pages()
         self._update_info = None
         if settings.get("check_updates", True):
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(5000, lambda: self.check_update(manual=False))
+        # confere de novo a cada 6 h enquanto o app está aberto ou na bandeja
+        self._upd_timer = QTimer(self)
+        self._upd_timer.setInterval(updater_every_ms())
+        self._upd_timer.timeout.connect(lambda: settings.get("check_updates", True)
+                                        and self.check_update(manual=False))
+        self._upd_timer.start()
         if not settings.get("seen_analysis"):
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(900, self.first_run)
 
     # ---------------------------------------------------------------- barra lateral
@@ -178,7 +200,8 @@ class MainWindow(QMainWindow):
 
     def toggle_collapse(self):
         """Clique no 'Recolher menu': vira escolha manual, que vale também em janela estreita."""
-        col = self.side.width() > 100
+        col = not self._collapsed
+        self._peek = False
         self._set_collapsed(col)
         settings.set("nav_collapsed", col)
         settings.set("nav_manual", True)
@@ -188,11 +211,34 @@ class MainWindow(QMainWindow):
         if settings.get("nav_manual") or not hasattr(self, "side"):
             return
         narrow = self.width() < self.AUTO_COLLAPSE_W
-        if narrow != (self.side.width() <= 100):
+        if narrow != self._collapsed:
             self._set_collapsed(narrow)
 
+    # menu recolhido: cresce suavemente ao passar o mouse e volta ao sair
+    def eventFilter(self, obj, ev):
+        from PySide6.QtCore import QEvent
+        if obj is self.side and self._collapsed:
+            if ev.type() == QEvent.Enter and not self._peek:
+                self._peek = True
+                self._labels(False)
+                from lolitos.ui.anim import animate_width
+                animate_width(self.side, 256)
+            elif ev.type() == QEvent.Leave and self._peek:
+                self._peek = False
+                from lolitos.ui.anim import animate_width
+                animate_width(self.side, 68, done=lambda: self._collapsed and not self._peek and self._labels(True))
+        return super().eventFilter(obj, ev)
+
     def _set_collapsed(self, col: bool):
-        self.side.setFixedWidth(68 if col else 256)
+        self._collapsed = col
+        if not self.isVisible():
+            self.side.setFixedWidth(68 if col else 256)
+        elif not getattr(self, "_peek", False):
+            from lolitos.ui.anim import animate_width
+            animate_width(self.side, 68 if col else 256)
+        self._labels(col)
+
+    def _labels(self, col: bool):
         self.brand.set_collapsed(col)
         self.flags.setVisible(not col)
         for sec in self.nav_sections:
@@ -201,6 +247,7 @@ class MainWindow(QMainWindow):
             b.set_collapsed(col)
         self.update_btn.setText("⟳" if col else ("⟳  " + __import__("lolitos.i18n", fromlist=["tr"]).tr(
             "Procurar atualização")))
+        self._theme_text(col)
 
     def set_language(self, code: str):
         from lolitos.i18n import current, restart_text
@@ -221,8 +268,12 @@ class MainWindow(QMainWindow):
         page = self.stack.widget(i)
         if hasattr(page, "ensure_built"):
             page.ensure_built()
+        changed = self.stack.currentIndex() != i
         self.stack.setCurrentIndex(i)
         self.group.button(i).setChecked(True)
+        if changed and self.isVisible():
+            from lolitos.ui.anim import fade_in
+            fade_in(page)
         if bring:
             if self.isMinimized():
                 self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
@@ -233,7 +284,6 @@ class MainWindow(QMainWindow):
 
     def prebuild_pages(self):
         """Monta as outras telas aos poucos, com o app parado, para a primeira visita ser instantânea."""
-        from PySide6.QtCore import QTimer
         pending = [self.stack.widget(i) for i in range(self.stack.count())]
 
         def step():
@@ -249,8 +299,43 @@ class MainWindow(QMainWindow):
         settings.set("dirty", True)
 
     def apply_theme(self):
-        theme.use(settings.get("theme"))
-        QApplication.instance().setStyleSheet(theme.qss())
+        theme.use(settings.get("theme"), settings.get("visual_effects", True))
+        app = QApplication.instance()
+        app.setStyleSheet(theme.qss())
+        for w in app.allWidgets():      # desenhos feitos à mão (gráficos, placa-mãe) pegam as cores novas
+            w.update()
+        self._theme_text()
+
+    def set_theme(self, key: str):
+        settings.set("theme", key)
+        self.apply_theme()
+
+    def _theme_text(self, col: bool | None = None):
+        from lolitos.i18n import tr
+        if col is None:
+            col = getattr(self, "_collapsed", False) and not getattr(self, "_peek", False)
+        name = dict(theme.THEME_NAMES).get(settings.get("theme"), "Azul")
+        self.theme_btn.setText("◐" if col else f"◐  {tr('Tema')}: {tr(name)}")
+        self.theme_btn.setToolTip(tr("Trocar o tema (Escuro, Claro ou Azul)"))
+
+    def _theme_menu(self):
+        from PySide6.QtWidgets import QMenu
+
+        from lolitos.i18n import tr
+        m = QMenu(self)
+        cur = settings.get("theme")
+        for key, name in theme.THEME_NAMES:
+            a = m.addAction(tr(name))
+            a.setCheckable(True)
+            a.setChecked(key == cur)
+            a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
+        m.addSeparator()
+        fx = m.addAction(tr("Efeitos visuais"))
+        fx.setCheckable(True)
+        fx.setChecked(settings.get("visual_effects", True))
+        fx.triggered.connect(lambda v: (settings.set("visual_effects", v), self.apply_theme()))
+        from PySide6.QtCore import QPoint
+        m.exec(self.theme_btn.mapToGlobal(QPoint(0, -m.sizeHint().height())))
 
     # ---------------------------------------------------------------- atualização
     def check_update(self, manual: bool = True):
@@ -268,7 +353,8 @@ class MainWindow(QMainWindow):
             self.update_btn.setStyleSheet(f"color:{theme.C['accent2']}; font-weight:700;")
             if manual:
                 self.do_update(inf)
-            elif self.tray.isVisible():
+            elif self.tray.isVisible() and getattr(self, "_notified", "") != inf["version"]:
+                self._notified = inf["version"]
                 self.tray.showMessage(APP_NAME, f"Versão {inf['version']} disponível. Clique em 'Atualizar' na "
                                                 "barra lateral.")
 
@@ -282,7 +368,7 @@ class MainWindow(QMainWindow):
             return
         if manual:
             self.update_btn.setText("⟳  Procurando…")
-        run_async(updater.check, on_done=found, on_error=failed)
+        run_async(updater.check_retry, on_done=found, on_error=failed)
 
     def do_update(self, inf: dict):
         import webbrowser
@@ -373,7 +459,49 @@ class MainWindow(QMainWindow):
             return
         self.quit()
 
+    # ---------------------------------------------------------------- clipes
+    CLIP_KEYS = (("save", 0x24), ("record", 0x23))      # Alt+Home, Alt+End
+
+    def start_clips(self):
+        from lolitos.modules.clips import ClipsService
+        from lolitos.ui.overlay import HotkeyThread
+        from lolitos.ui.widgets import ui_call
+        self.stop_clips()
+        self.clips = ClipsService(lambda kind, msg: ui_call(lambda: self._clip_event(kind, msg)))
+        self.clips.start()
+        self._clip_keys = []
+        for job, vk in self.CLIP_KEYS:
+            hk = HotkeyThread(0x0001 | 0x4000, vk, lambda j=job: self.clips and self.clips.request(j))
+            if hk.start():
+                self._clip_keys.append(hk)
+            else:
+                self._clip_event("aviso", "Alt+Home/Alt+End já estão em uso por outro programa.")
+
+    def stop_clips(self):
+        for hk in getattr(self, "_clip_keys", []):
+            hk.stop()
+        self._clip_keys = []
+        svc = getattr(self, "clips", None)
+        if svc:
+            svc.stop()
+        self.clips = None
+
+    def _clip_event(self, kind: str, msg: str):
+        from lolitos.i18n import tr
+        titles = {"salvo": "Clipe salvo", "gravando": "Gravando", "erro": "Clipes", "aviso": "Clipes",
+                  "buffer": "Clipes"}
+        text = msg
+        if kind == "salvo":
+            from pathlib import Path
+            text = tr("Clipe salvo: {}").replace("{}", Path(msg).name)
+        if self.tray.isVisible():
+            self.tray.showMessage(tr(titles.get(kind, "Clipes")), tr(text) if kind != "salvo" else text)
+        page = self.stack.widget(self.index.get("clipes", 0))
+        if getattr(page, "_built", False) and hasattr(page, "_refresh"):
+            page._refresh()
+
     def quit(self):
+        self.stop_clips()
         self.unregister_hotkey()
         self.overlay.hide()
         self.tray.hide()

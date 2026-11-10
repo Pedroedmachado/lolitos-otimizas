@@ -71,22 +71,56 @@ def set_enabled(e: Entry, enabled: bool) -> None:
                 "Inicialização", success=True, reversible=False)
 
 
-def self_autostart(enable: bool) -> None:
-    """Liga/desliga o próprio app na inicialização via tarefa agendada (abre já como admin, sem UAC)."""
+def _self_command() -> tuple[str, str]:
     import sys
+    if getattr(sys, "frozen", False):
+        return sys.executable, "--tray"
+    pyw = Path(sys.executable).with_name("pythonw.exe")     # modo desenvolvimento
+    main = Path(__file__).resolve().parents[2] / "run_lolitos.pyw"
+    return str(pyw if pyw.exists() else sys.executable), f'"{main}" --tray'
+
+
+def autostart_script(exe: str, args: str, task: str) -> str:
+    """PowerShell que cria a tarefa de login: abre como admin (sem UAC), também na bateria, e nunca é encerrada
+    pelo Windows (o padrão do schtasks para o app depois de 3 dias e não abre no notebook fora da tomada)."""
+    def q(s):
+        return "'" + s.replace("'", "''") + "'"
+    return (f"$a=New-ScheduledTaskAction -Execute {q(exe)} -Argument {q(args)};"
+            "$t=New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name);"
+            "$t.Delay='PT15S';"
+            "$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries"
+            " -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 5;"
+            "$p=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+            " -LogonType Interactive -RunLevel Highest;"
+            f"Register-ScheduledTask -TaskName {q(task)} -Action $a -Trigger $t -Settings $s -Principal $p -Force"
+            " | Out-Null")
+
+
+def self_autostart(enable: bool, user_choice: bool = True) -> bool:
+    """Liga/desliga o próprio app na inicialização via tarefa agendada."""
     from lolitos import APP_ID
-    from lolitos.core.system import run
-    if enable:
-        if getattr(sys, "frozen", False):
-            tr = f'"{sys.executable}" --tray'
-        else:  # modo desenvolvimento: pythonw + caminho do pacote
-            pyw = Path(sys.executable).with_name("pythonw.exe")
-            main = Path(__file__).resolve().parents[2] / "run_lolitos.pyw"
-            tr = f'"{pyw if pyw.exists() else sys.executable}" "{main}" --tray'
-        run(["schtasks", "/Create", "/F", "/RL", "HIGHEST", "/SC", "ONLOGON", "/TN", APP_ID,
-             "/TR", tr, "/DELAY", "0000:15"])
-    else:
-        run(["schtasks", "/Delete", "/F", "/TN", APP_ID])
+    from lolitos.core import settings
+    from lolitos.core.system import powershell, run
+    if user_choice:
+        settings.set("autostart_choice", bool(enable))
+    if not enable:
+        return run(["schtasks", "/Delete", "/F", "/TN", APP_ID]).ok
+    exe, args = _self_command()
+    if powershell(autostart_script(exe, args, APP_ID), timeout=60).ok:
+        return True
+    # sem o módulo ScheduledTasks: schtasks (com os limites padrão do Windows)
+    return run(["schtasks", "/Create", "/F", "/RL", "HIGHEST", "/SC", "ONLOGON", "/TN", APP_ID,
+                "/TR", f'"{exe}" {args}', "/DELAY", "0000:15"]).ok
+
+
+def ensure_autostart() -> None:
+    """Uma vez: recria a tarefa de quem já usa o início com o Windows, para valer também na bateria e sem o
+    limite de 3 dias do padrão. Instalações novas já vêm com ela ligada (opção marcada no instalador)."""
+    from lolitos.core import settings
+    if settings.get("autostart_v2"):
+        return
+    if not self_autostart_enabled() or self_autostart(True, user_choice=False):
+        settings.set("autostart_v2", True)
 
 
 def migrate_old_autostart() -> None:
@@ -99,7 +133,7 @@ def migrate_old_autostart() -> None:
             run(["schtasks", "/Delete", "/F", "/TN", old_id])
             found = True
     if found:
-        self_autostart(True)
+        self_autostart(True, user_choice=False)
 
 
 def self_autostart_enabled() -> bool:

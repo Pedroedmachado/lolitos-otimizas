@@ -62,7 +62,7 @@ class Speedometer(QWidget):
         # ponteiro
         ang = math.radians(225 - 270 * self.value / 100)
         tip = QPointF(cx + r * 0.82 * math.cos(ang), cy - r * 0.82 * math.sin(ang))
-        p.setPen(QPen(QColor("#ffffff"), max(3, r * 0.03), Qt.SolidLine, Qt.RoundCap))
+        p.setPen(QPen(QColor(C["text"]), max(3, r * 0.03), Qt.SolidLine, Qt.RoundCap))
         p.drawLine(QPointF(cx, cy), tip)
         p.setPen(QPen(QColor(C["accent2"]), 3))
         p.setBrush(QColor(C["panel"]))
