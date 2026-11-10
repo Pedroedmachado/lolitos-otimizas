@@ -1,7 +1,7 @@
 # Chinese Control
 
 Otimizador de Windows **para jogos** — com otimização por jogo para tudo que estiver instalado e um módulo especial
-para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 2.0.1. Interface em português, inglês e espanhol.
+para **Black Desert Online** (Guerra de Nodes e Cerco). Feito em Python + PySide6. Versão 2.1.0. Interface em português, inglês e espanhol.
 Reimplementação limpa das funções de um otimizador comercial: código, textos e valores próprios, sem
 reaproveitar nada do programa original.
 
@@ -13,7 +13,7 @@ um ambiente virtual e instala as dependências. O app pede administrador ao abri
 **Baixar o instalador pronto:** aba [Releases](https://github.com/Pedroedmachado/lolitos-otimizas/releases) — cada push na `main` gera o `Setup.exe` pelo GitHub Actions.
 
 **Gerar o instalador no seu PC (Setup.exe):** dê dois cliques em `gerar-instalador.bat`. Ele instala sozinho pelo winget o
-que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-2.0.1-Setup.exe`.
+que faltar (Python 3.12 e Inno Setup 6), gera o programa e monta `dist\ChineseControl-2.1.0-Setup.exe`.
 O instalador tem assistente em português, inglês ou espanhol (o app abre no idioma escolhido), termos de uso, atalhos, opção de iniciar com o Windows, fecha o app
 antes de atualizar e desinstalador (que pergunta se apaga histórico e backups).
 
@@ -47,6 +47,18 @@ A barra lateral é dividida em quatro seções:
 | | **Defender e IA** | Antivírus (liberar o app) e recursos de IA do Windows |
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
+
+## Novidades da 2.1.0
+
+* **Clipes de novo, no formato completo:**
+  * *Componente de gravação*: o gravador é baixado só quando você clica em *Baixar e ativar Clipes*.
+  * *Captura*: estado (ligada, desligada, gravando), botões **Ligar captura**, **Salvar clipe** e **Gravar**, e
+    **atalhos que você escolhe** (padrão Alt+Home e Alt+End), com aviso quando outro programa já usa o atalho.
+  * *Configurações em botões*: quanto guardar (15 s a 5 min), qualidade (Leve, Equilibrada, Alta), 30/60 FPS,
+    **tamanho do vídeo** (720p, 1080p, 1440p ou original), **o que capturar** (só a janela do jogo ou a tela
+    inteira) e som (só o jogo, todo o PC ou sem som), com quanto o buffer ocupa no disco.
+  * **Ligar sozinho quando um jogo abrir**: com isso desligado, nada fica rodando até você ligar a captura.
+  * Pasta dos clipes (trocar e abrir) e clipes recentes.
 
 ## Novidades da 2.0.1
 

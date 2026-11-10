@@ -460,22 +460,36 @@ class MainWindow(QMainWindow):
         self.quit()
 
     # ---------------------------------------------------------------- clipes
-    CLIP_KEYS = (("save", 0x24), ("record", 0x23))      # Alt+Home, Alt+End
+    CLIP_KEYS = (("save", "clips_key_save", "Alt+Home"), ("record", "clips_key_record", "Alt+End"))
 
     def start_clips(self):
         from lolitos.modules.clips import ClipsService
-        from lolitos.ui.overlay import HotkeyThread
         from lolitos.ui.widgets import ui_call
         self.stop_clips()
         self.clips = ClipsService(lambda kind, msg: ui_call(lambda: self._clip_event(kind, msg)))
         self.clips.start()
-        self._clip_keys = []
-        for job, vk in self.CLIP_KEYS:
-            hk = HotkeyThread(0x0001 | 0x4000, vk, lambda j=job: self.clips and self.clips.request(j))
-            if hk.start():
-                self._clip_keys.append(hk)
+        self.register_clip_keys()
+
+    def register_clip_keys(self) -> list[str]:
+        """Registra os atalhos dos Clipes. Devolve os que outro programa já usa (ou que não são válidos)."""
+        from lolitos.ui.overlay import HotkeyThread, parse_hotkey
+        for hk in getattr(self, "_clip_keys", []):
+            hk.stop()
+        self._clip_keys, self.clip_key_errors = [], []
+        if not getattr(self, "clips", None):
+            return []
+        for job, key, default in self.CLIP_KEYS:
+            text = settings.get(key) or default
+            hk = parse_hotkey(text)
+            if not hk:
+                self.clip_key_errors.append(text)
+                continue
+            t = HotkeyThread(hk[0], hk[1], lambda j=job: self.clips and self.clips.request(j))
+            if t.start():
+                self._clip_keys.append(t)
             else:
-                self._clip_event("aviso", "Alt+Home/Alt+End já estão em uso por outro programa.")
+                self.clip_key_errors.append(text)
+        return self.clip_key_errors
 
     def stop_clips(self):
         for hk in getattr(self, "_clip_keys", []):
@@ -494,7 +508,7 @@ class MainWindow(QMainWindow):
         if kind == "salvo":
             from pathlib import Path
             text = tr("Clipe salvo: {}").replace("{}", Path(msg).name)
-        if self.tray.isVisible():
+        if kind != "estado" and self.tray.isVisible():
             self.tray.showMessage(tr(titles.get(kind, "Clipes")), tr(text) if kind != "salvo" else text)
         page = self.stack.widget(self.index.get("clipes", 0))
         if getattr(page, "_built", False) and hasattr(page, "_refresh"):

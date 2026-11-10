@@ -503,3 +503,60 @@ def test_audio_timeline():
     assert sum(len(x) for x in late) == len(pkt)       # dentro da tolerância: entra inteiro
     late2 = tl2.place(t(36000 - 4800), pkt)            # começa 100 ms antes: tudo já coberto
     assert late2 == []
+
+
+def test_clips_region_and_size():
+    from lolitos.modules.clips import GameWin, Monitor, buffer_mb, out_height, region, video_args
+    m = [Monitor(0, 0, 0, 2560, 1440, True), Monitor(1, 2560, 0, 1920, 1080, False)]
+    g = GameWin(1, "BlackDesert64.exe", 1)
+    assert region("window", g, m, rect=(100, 51, 1381, 771)) == (0, ":video_size=1280x720:offset_x=100:offset_y=51",
+                                                                 720)
+    assert region("window", g, m, rect=(2560, 0, 4480, 1080)) == (1, "", 1080)       # tela cheia: sem recorte
+    assert region("screen", None, m, mon_choice=1) == (1, "", 1080)
+    assert out_height(1440, 1080) == 1080 and out_height(720, 1080) == 720 and out_height(1440, 0) == 1440
+    a = video_args("h264_nvenc", "media", 1440, 1080)
+    assert a[0] == "-vf" and "scale=-2:1080" in a[1] and "-c:v" in a                  # reduz antes de codificar
+    assert video_args("h264_nvenc", "media", 1080, 1080)[0] == "-c:v"                  # direto da placa
+    assert buffer_mb(30, "media", 1080) > buffer_mb(30, "leve", 720)
+
+
+def test_clips_service_modes(monkeypatch):
+    from lolitos.core import settings
+    from lolitos.modules import clips
+    started = []
+
+    class FakeRec:
+        def __init__(self, exe, game, on_event=None):
+            self.game, self.name, self.region_key = game, game.exe if game else "Tela", (0, "")
+            self._alive = True
+
+        def start(self):
+            started.append(self.name)
+
+        def alive(self):
+            return self._alive
+
+        def stop(self):
+            self._alive = False
+    monkeypatch.setattr(clips, "Recorder", FakeRec)
+    monkeypatch.setattr(clips, "monitors", lambda: [clips.Monitor(0, 0, 0, 1920, 1080, True)])
+    fg = {"g": None}
+    monkeypatch.setattr(clips, "foreground_game", lambda: fg["g"])
+    settings.set("clips_auto", True)
+    settings.set("clips_target", "screen")
+    svc = clips.ClipsService()
+    svc._tick("ffmpeg")
+    assert not svc.capturing()                         # sem jogo: nada rodando
+    fg["g"] = clips.GameWin(10, "BlackDesert64.exe", 1)
+    svc._tick("ffmpeg")
+    assert svc.capturing() and started == ["BlackDesert64.exe"]
+    monkeypatch.setattr(clips.psutil, "pid_exists", lambda pid: True)
+    svc.set_capture(False)                             # desligou à mão com o jogo aberto
+    svc._tick("ffmpeg")
+    assert not svc.capturing()
+    svc._tick("ffmpeg")
+    assert not svc.capturing()                         # não religa sozinha com o mesmo jogo
+    fg["g"] = None
+    svc.set_capture(True)                              # ligou à mão sem jogo: grava a tela
+    svc._tick("ffmpeg")
+    assert svc.capturing() and started[-1] == "Tela"

@@ -30,21 +30,23 @@ log = logging.getLogger("lolitos")
 SEG = 1                          # segundos por pedaço do buffer
 WINGET_ID = "Gyan.FFmpeg.Essentials"
 NO_WINDOW = 0x08000000
-ENCODERS = [  # (nome do ffmpeg, rótulo, argumentos de vídeo)
-    ("h264_nvenc", "NVIDIA NVENC", ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "{q}",
-                                    "-b:v", "{br}", "-maxrate", "{max}"]),
-    ("h264_amf", "AMD AMF", ["-c:v", "h264_amf", "-quality", "balanced", "-rc", "vbr_peak", "-b:v", "{br}",
-                             "-maxrate", "{max}"]),
-    ("h264_qsv", "Intel Quick Sync", ["-vf", "hwmap=derive_device=qsv,format=qsv", "-c:v", "h264_qsv",
-                                      "-preset", "fast", "-b:v", "{br}", "-maxrate", "{max}"]),
-    ("libx264", "processador (x264)", ["-vf", "hwdownload,format=bgra,format=yuv420p", "-c:v", "libx264",
-                                        "-preset", "veryfast", "-crf", "{q}", "-maxrate", "{max}",
-                                        "-bufsize", "{max}"]),
+ENCODERS = [  # (nome do ffmpeg, rótulo, filtro sem redimensionar, argumentos do codificador)
+    ("h264_nvenc", "NVIDIA NVENC", "", ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "{q}",
+                                        "-b:v", "{br}", "-maxrate", "{max}", "-bufsize", "{max}"]),
+    ("h264_amf", "AMD AMF", "", ["-c:v", "h264_amf", "-quality", "balanced", "-rc", "vbr_peak", "-b:v", "{br}",
+                                 "-maxrate", "{max}"]),
+    ("h264_qsv", "Intel Quick Sync", "hwmap=derive_device=qsv,format=qsv",
+     ["-c:v", "h264_qsv", "-preset", "fast", "-b:v", "{br}", "-maxrate", "{max}"]),
+    ("libx264", "processador (x264)", "hwdownload,format=bgra,format=yuv420p",
+     ["-c:v", "libx264", "-preset", "veryfast", "-crf", "{q}", "-maxrate", "{max}", "-bufsize", "{max}"]),
 ]
-QUALITY = {   # rótulo: (cq/crf, bitrate, máximo)
-    "alta": (19, "20M", "35M"), "media": (23, "12M", "20M"), "leve": (27, "6M", "10M")}
-BUFFER_CHOICES = [15, 30, 60, 120]
-CAPTURE = "ddagrab=output_idx={mon}:framerate={fps}"     # fonte de vídeo (troca só nos testes)
+# qualidade: (cq/crf, Mb/s em 1080p). O bitrate acompanha o tamanho do vídeo.
+QUALITY = {"leve": (27, 6), "media": (23, 12), "alta": (19, 20)}
+QUALITY_NAMES = [("leve", "Leve"), ("media", "Equilibrada"), ("alta", "Alta")]
+BUFFER_CHOICES = [15, 30, 60, 120, 180, 300]
+RES_CHOICES = [(720, "720p"), (1080, "1080p"), (1440, "1440p"), (0, "Original")]
+CAPTURE = "ddagrab=output_idx={mon}:framerate={fps}{crop}"     # fonte de vídeo (troca só nos testes)
+AUDIO_KBPS = 192
 NOT_GAMES = {"explorer.exe", "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "brave.exe", "discord.exe",
              "spotify.exe", "vlc.exe", "mpc-hc64.exe", "obs64.exe", "applicationframehost.exe",
              "searchhost.exe", "startmenuexperiencehost.exe", "shellexperiencehost.exe", "taskmgr.exe",
@@ -101,7 +103,7 @@ def install_ffmpeg(progress=None) -> Path:
 def pick_encoder(exe: Path, progress=None) -> str:
     """Testa os codificadores da placa de vídeo e fica com o primeiro que funciona neste PC."""
     say = progress or (lambda s: None)
-    for name, label, _args in ENCODERS:
+    for name, label, _f, _args in ENCODERS:
         say(f"Testando {label}…")
         args = video_args(name, "media")
         cmd = [str(exe), "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
@@ -113,16 +115,45 @@ def pick_encoder(exe: Path, progress=None) -> str:
     raise RuntimeError("Nenhum codificador de vídeo funcionou (a captura de tela pode estar bloqueada).")
 
 
-def video_args(encoder: str, quality: str) -> list[str]:
-    q, br, mx = QUALITY.get(quality, QUALITY["media"])
-    for name, _label, args in ENCODERS:
-        if name == encoder:
-            return [a.format(q=q, br=br, max=mx) for a in args]
-    return video_args("libx264", quality)
+def bitrate_mbps(quality: str, height: int) -> float:
+    """Bitrate de vídeo para a qualidade e a altura do vídeo (proporcional à área, com base no 1080p)."""
+    base = QUALITY.get(quality, QUALITY["media"])[1]
+    h = height or 1080
+    return round(base * max(0.35, min(4.0, (h / 1080) ** 2)), 1)
+
+
+def out_height(src_h: int, res: int) -> int:
+    """Altura final: a escolhida, sem aumentar quem já é menor ('Original' = a da captura)."""
+    if not res or not src_h:
+        return src_h
+    return min(src_h, res)
+
+
+def video_args(encoder: str, quality: str, src_h: int = 0, res: int = 0) -> list[str]:
+    """Filtro + codificador. Sem redimensionar, a imagem vai direto da placa de vídeo para o codificador.
+    Para diminuir (ex.: 1440p → 1080p), a imagem é reduzida antes de codificar."""
+    ent = next((e for e in ENCODERS if e[0] == encoder), None) or ENCODERS[-1]
+    name, _label, base_filter, args = ent
+    h = out_height(src_h, res)
+    q = QUALITY.get(quality, QUALITY["media"])[0]
+    br = bitrate_mbps(quality, h or src_h)
+    vals = {"q": q, "br": f"{br:g}M", "max": f"{round(br * 1.7, 1):g}M"}
+    out = []
+    if src_h and h and h < src_h:
+        fmt = "yuv420p" if name == "libx264" else "nv12"
+        out += ["-vf", f"hwdownload,format=bgra,scale=-2:{h}:flags=bicubic,format={fmt}"]
+    elif base_filter:
+        out += ["-vf", base_filter]
+    return out + [a.format(**vals) for a in args]
+
+
+def buffer_mb(seconds: int, quality: str, height: int) -> int:
+    """Quanto o buffer ocupa no disco (aproximado)."""
+    return int((bitrate_mbps(quality, height) + AUDIO_KBPS / 1000) * seconds / 8) + 1
 
 
 def encoder_label(name: str) -> str:
-    return next((label for n, label, _ in ENCODERS if n == name), name)
+    return next((e[1] for e in ENCODERS if e[0] == name), name)
 
 
 def clips_dir() -> Path:
@@ -140,6 +171,81 @@ def clips_dir() -> Path:
 class GameWin:
     pid: int
     exe: str
+    hwnd: int = 0
+
+
+@dataclass
+class Monitor:
+    idx: int
+    left: int
+    top: int
+    width: int
+    height: int
+    primary: bool
+
+
+def monitors() -> list[Monitor]:
+    """Monitores na ordem da captura do Windows (o principal primeiro, depois da esquerda para a direita)."""
+    if not IS_WIN:
+        return [Monitor(0, 0, 0, 1920, 1080, True)]
+    import ctypes
+    from ctypes import wintypes
+
+    class MI(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT), ("rcWork", wintypes.RECT),
+                    ("dwFlags", wintypes.DWORD)]
+    found = []
+    proc = ctypes.WINFUNCTYPE(ctypes.c_int, wintypes.HMONITOR, wintypes.HDC, ctypes.POINTER(wintypes.RECT),
+                              wintypes.LPARAM)
+
+    def cb(hmon, _hdc, _rc, _lp):
+        mi = MI()
+        mi.cbSize = ctypes.sizeof(MI)
+        if ctypes.windll.user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+            r = mi.rcMonitor
+            found.append((not (mi.dwFlags & 1), r.left, r.top, r.right - r.left, r.bottom - r.top))
+        return 1
+    ctypes.windll.user32.EnumDisplayMonitors(None, None, proc(cb), 0)
+    found.sort()
+    return [Monitor(i, l, t, w, h, not np) for i, (np, l, t, w, h) in enumerate(found)] or \
+        [Monitor(0, 0, 0, 1920, 1080, True)]
+
+
+def client_rect(hwnd: int) -> tuple[int, int, int, int] | None:
+    """Área de desenho da janela (sem bordas e barra de título), em pixels da tela."""
+    if not IS_WIN or not hwnd:
+        return None
+    import ctypes
+    from ctypes import wintypes
+    r = wintypes.RECT()
+    if not ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(r)):
+        return None
+    pt = wintypes.POINT(0, 0)
+    ctypes.windll.user32.ClientToScreen(hwnd, ctypes.byref(pt))
+    return pt.x, pt.y, pt.x + r.right, pt.y + r.bottom
+
+
+def region(target: str, game: "GameWin | None", mons: list[Monitor], rect=None, mon_choice: int = 0):
+    """(índice do monitor, recorte para o ddagrab, altura capturada).
+
+    'window': só a janela do jogo (recortada do monitor onde ela está); 'screen': o monitor inteiro."""
+    rect = rect if rect is not None else (client_rect(game.hwnd) if game else None)
+    if rect:
+        cx, cy = (rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2
+        mon = next((m for m in mons if m.left <= cx < m.left + m.width and m.top <= cy < m.top + m.height),
+                   mons[0])
+    else:
+        mon = mons[mon_choice] if 0 <= mon_choice < len(mons) else mons[0]
+    if target != "window" or not rect:
+        return mon.idx, "", mon.height
+    x = max(0, rect[0] - mon.left)
+    y = max(0, rect[1] - mon.top)
+    w = min(rect[2] - mon.left, mon.width) - x
+    h = min(rect[3] - mon.top, mon.height) - y
+    w, h = w - w % 2, h - h % 2
+    if w < 160 or h < 120 or (w >= mon.width - 1 and h >= mon.height - 1):
+        return mon.idx, "", mon.height
+    return mon.idx, f":video_size={w}x{h}:offset_x={x}:offset_y={y}", h
 
 
 def _known_exes() -> set[str]:
@@ -173,7 +279,7 @@ def foreground_game() -> GameWin | None:
     if low in NOT_GAMES:
         return None
     if low in _known_exes():
-        return GameWin(pid.value, name)
+        return GameWin(pid.value, name, hwnd)
     r = wintypes.RECT()
     u.GetWindowRect(hwnd, ctypes.byref(r))
     mon = u.MonitorFromWindow(hwnd, 2)
@@ -187,7 +293,7 @@ def foreground_game() -> GameWin | None:
         return None
     m = mi.rcMonitor
     full = r.left <= m.left and r.top <= m.top and r.right >= m.right and r.bottom >= m.bottom
-    return GameWin(pid.value, name) if full else None
+    return GameWin(pid.value, name, hwnd) if full else None
 
 
 # ====================================================================== buffer e gravação
@@ -253,7 +359,7 @@ def safe_name(s: str) -> str:
 class Recorder:
     """Uma sessão de captura (buffer circular) enquanto o jogo está aberto."""
 
-    def __init__(self, exe: Path, game: GameWin, on_event=None):
+    def __init__(self, exe: Path, game: GameWin | None, on_event=None):
         self.exe, self.game = exe, game
         self.on_event = on_event or (lambda kind, msg: None)
         self.buf = data_dir() / "clips_buffer"
@@ -275,6 +381,11 @@ class Recorder:
         secs = int(settings.get("clips_seconds") or 30)
         wrap = secs // SEG + 4
         audio_mode = settings.get("clips_audio") or "game"      # game | pc | none
+        if self.game is None and audio_mode == "game":
+            audio_mode = "pc"                                      # sem jogo: o som do PC
+        mon, crop, src_h = region(settings.get("clips_target") or "window", self.game, monitors(),
+                                  mon_choice=int(settings.get("clips_monitor") or 0))
+        self.region_key = (mon, crop)
         from lolitos.modules import procaudio
         cmd = [str(self.exe), "-hide_banner", "-loglevel", "warning", "-y"]
         if audio_mode != "none":
@@ -287,12 +398,13 @@ class Recorder:
                 self.audio = None
         if self.audio:
             cmd += ["-thread_queue_size", "4096", *self.audio.ffmpeg_args, "-i", "pipe:0"]
-        cmd += ["-f", "lavfi", "-i", CAPTURE.format(mon=int(settings.get("clips_monitor") or 0), fps=fps)]
+        cmd += ["-f", "lavfi", "-i", CAPTURE.format(mon=mon, fps=fps, crop=crop)]
         vid_in = 1 if self.audio else 0
         cmd += ["-map", f"{vid_in}:v"]
         if self.audio:
             cmd += ["-map", "0:a", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
-        cmd += [*video_args(settings.get("clips_encoder") or "libx264", settings.get("clips_quality") or "media"),
+        cmd += [*video_args(settings.get("clips_encoder") or "libx264", settings.get("clips_quality") or "media",
+                            src_h, int(settings.get("clips_res") if settings.get("clips_res") is not None else 1080)),
                 "-g", str(fps * SEG), "-keyint_min", str(fps * SEG),
                 "-f", "segment", "-segment_time", str(SEG), "-segment_format", "mpegts",
                 "-segment_wrap", str(wrap), "-reset_timestamps", "0",
@@ -307,7 +419,11 @@ class Recorder:
         self._watch = threading.Thread(target=self._watch_loop, daemon=True)
         self._watch.start()
         mode = self.audio.mode if self.audio else "sem áudio"
-        log.info("clipes: buffer iniciado (%s, áudio %s)", self.game.exe, mode)
+        log.info("clipes: buffer iniciado (%s, %s%s, áudio %s)", self.name, mon, crop, mode)
+
+    @property
+    def name(self) -> str:
+        return self.game.exe if self.game else "Tela"
 
     def _feed(self, data: bytes):
         p = self.proc
@@ -382,7 +498,7 @@ class Recorder:
             dst = tmp / f"{i:04d}.ts"
             shutil.copy2(p, dst)
             copies.append(dst)
-        out = clips_dir() / f"{safe_name(Path(self.game.exe).stem)} {time.strftime('%Y-%m-%d %H-%M-%S')}.mp4"
+        out = clips_dir() / f"{safe_name(Path(self.name).stem)} {time.strftime('%Y-%m-%d %H-%M-%S')}.mp4"
         concat(self.exe, copies, out)
         shutil.rmtree(tmp, ignore_errors=True)
         return out
@@ -400,7 +516,7 @@ class Recorder:
         self._collect()
         if not self.rec_parts:
             raise RuntimeError("a gravação ficou vazia")
-        out = clips_dir() / (f"{safe_name(Path(self.game.exe).stem)} {time.strftime('%Y-%m-%d %H-%M-%S')} "
+        out = clips_dir() / (f"{safe_name(Path(self.name).stem)} {time.strftime('%Y-%m-%d %H-%M-%S')} "
                              "(gravação).mp4")
         remux(self.exe, self.rec_parts[0], out)
         shutil.rmtree(data_dir() / "clips_rec", ignore_errors=True)
@@ -408,14 +524,16 @@ class Recorder:
 
 
 class ClipsService(threading.Thread):
-    """Fica de olho no jogo em primeiro plano: liga o buffer quando um jogo aparece e desliga 30 s depois que
-    ele sai. Recebe os pedidos das teclas (salvar / gravar)."""
+    """Controla a captura: ligada à mão ('Ligar captura') ou sozinha quando um jogo aparece na tela
+    ('Ligar sozinho quando um jogo abrir'), e desligada 30 s depois que o jogo sai. Recebe os pedidos das teclas."""
 
     def __init__(self, on_event=None):
         super().__init__(daemon=True)
         self.on_event = on_event or (lambda kind, msg: None)
         self.rec: Recorder | None = None
         self.recording = False
+        self.manual = False
+        self.suppressed_pid = 0      # desligada à mão com um jogo aberto: não religa sozinha até esse jogo fechar
         self._stop = threading.Event()
         self._jobs: list[str] = []
         self._cv = threading.Condition()
@@ -431,17 +549,29 @@ class ClipsService(threading.Thread):
             self._jobs.append(what)
             self._cv.notify()
 
+    def set_capture(self, on: bool):
+        self.manual = bool(on)
+        if not on:
+            g = self.rec.game if self.rec and self.rec.game else foreground_game()
+            self.suppressed_pid = g.pid if g else 0
+        else:
+            self.suppressed_pid = 0
+        self.request("tick")
+
+    def capturing(self) -> bool:
+        return bool(self.rec and self.rec.alive())
+
     def status(self) -> str:
         if self.recording:
             return "gravando"
-        if self.rec and self.rec.alive():
-            return f"buffer ativo · {self.rec.game.exe}"
-        return "esperando um jogo"
+        if self.capturing():
+            return f"ligada · {self.rec.name}"
+        return "desligada"
 
     def run(self):
         exe = find_ffmpeg()
         if not exe:
-            self.on_event("erro", "O gravador não está instalado. Ative os Clipes de novo.")
+            self.on_event("erro", "O gravador não está instalado. Baixe o componente de gravação de novo.")
             return
         while not self._stop.is_set():
             with self._cv:
@@ -457,38 +587,67 @@ class ClipsService(threading.Thread):
         if self.rec:
             self.rec.stop()
 
+    def _start(self, exe, game):
+        if self.rec:
+            self.rec.stop()
+        self.rec = Recorder(exe, game, self.on_event)
+        self.rec.start()
+        key = settings.get("clips_key_save") or "Alt+Home"
+        self.on_event("buffer", f"Captura ligada em {self.rec.name} ({key} salva os últimos "
+                                f"{settings.get('clips_seconds') or 30} s)")
+
     def _tick(self, exe):
         g = foreground_game()
         now = time.time()
         if g:
             self._last_game = now
-            if self.rec and self.rec.alive() and self.rec.game.pid != g.pid and not self.recording:
+        auto = settings.get("clips_auto", True)
+        recent = g is not None or (self.rec is not None and self.rec.game is not None
+                                   and now - self._last_game < 30)
+        if self.suppressed_pid and not psutil.pid_exists(self.suppressed_pid):
+            self.suppressed_pid = 0
+        suppressed = bool(self.suppressed_pid) and (g is None or g.pid == self.suppressed_pid)
+        want = self.manual or (auto and recent and not suppressed)
+        if not want:
+            if self.rec and not self.recording:
                 self.rec.stop()
                 self.rec = None
-            if not self.rec or not self.rec.alive():
-                self.rec = Recorder(exe, g, self.on_event)
-                self.rec.start()
-                self.on_event("buffer", f"Clipes prontos em {g.exe} (Alt+Home salva os últimos "
-                                        f"{settings.get('clips_seconds') or 30} s)")
-        elif self.rec and not self.recording and now - self._last_game > 30:
-            self.rec.stop()
-            self.rec = None
+                self.on_event("estado", "")
+            return
+        if self.recording:                     # nunca troca no meio de uma gravação
+            return
+        if not self.capturing():
+            self._start(exe, g or (self.rec.game if self.rec else None))
+            return
+        cur = self.rec.game
+        if g and (cur is None or cur.pid != g.pid):
+            self._start(exe, g)                # outro jogo na frente
+            return
+        if g and (settings.get("clips_target") or "window") == "window":
+            mon, crop, _h = region("window", g, monitors(), mon_choice=int(settings.get("clips_monitor") or 0))
+            if (mon, crop) != getattr(self.rec, "region_key", None):
+                self._start(exe, g)            # a janela do jogo mudou de tamanho ou de lugar
 
     def _do(self, job):
+        if job == "tick":
+            self.on_event("estado", "")
+            return
         if job == "save":
-            if not self.rec or not self.rec.alive():
-                self.on_event("aviso", "Nenhum jogo em primeiro plano agora: o buffer está parado.")
+            if not self.capturing():
+                self.on_event("aviso", "A captura está desligada: ligue em Clipes (ou abra um jogo com a captura "
+                                       "automática ligada).")
                 return
             out = self.rec.save_last(int(settings.get("clips_seconds") or 30))
             self.on_event("salvo", str(out))
         elif job == "record":
             if not self.recording:
-                if not self.rec or not self.rec.alive():
-                    self.on_event("aviso", "Abra o jogo antes de gravar.")
+                if not self.capturing():
+                    self.on_event("aviso", "Ligue a captura (ou abra o jogo) antes de gravar.")
                     return
                 self.rec.start_recording()
                 self.recording = True
-                self.on_event("gravando", "Gravando… (Alt+End de novo para parar)")
+                key = settings.get("clips_key_record") or "Alt+End"
+                self.on_event("gravando", f"Gravando… ({key} de novo para parar)")
             else:
                 self.recording = False
                 out = self.rec.stop_recording()

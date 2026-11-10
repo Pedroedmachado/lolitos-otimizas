@@ -108,6 +108,7 @@ QLabel#newtag {{ color: {c['accent2']}; font-size: 8pt; font-weight: 800; }}
 QPushButton#outline {{ background: transparent; border: 1px solid {c['accent']}; border-radius: 8px; font-weight: 700;
     padding: 8px; }}
 QPushButton#outline:hover {{ background: {c['deepbg']}; }}
+QPushButton#outline:disabled {{ border-color: {c['border']}; color: {c['muted']}; }}
 QFrame#tcard {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 12px; }}
 QFrame#tcardrec {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {c['hero1']}, stop:1 {c['panel']});
     border: 1px solid {c['border2']}; border-radius: 12px; }}
