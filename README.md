@@ -48,6 +48,24 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.3.0
+
+* **Núcleos da CPU para o BDO (processadores AMD)**, no estilo do Process Lasso: nova aba no Black Desert com as
+  threads por CCD e núcleo (mostra qual CCD tem o 3D V-Cache), escolhas rápidas (recomendado, só o CCD do V-Cache,
+  um thread por núcleo, sem o núcleo 0…) e dois métodos: *Afinidade de CPU* (rígida) ou *CPU Sets* (flexível). Com a
+  regra ligada, o app aplica sozinho toda vez que o BlackDesert64.exe abre e de novo se o jogo mudar. É o mesmo
+  *Definir afinidade* do Gerenciador de Tarefas: nada é injetado no jogo.
+* **Black Desert atualizado com o guia de FPS do BDO:**
+  * *Filtro de tela desligado de verdade*: coloca PostFilter = 0 nos gamevariable.xml da pasta UserCache (conta e
+    personagens), com backup; só essa linha muda.
+  * *Perfil NVIDIA do BDO* agora também grava baixa latência Ultra com 1 quadro pré-renderizado, V-Sync desligado,
+    energia em desempenho máximo, filtragem anisotrópica 8x e filtragem de textura em alto desempenho com viés LOD
+    travado. Quem já aplicou o perfil antigo só precisa clicar em *Aplicar no driver* de novo.
+  * Novo ajuste avançado para desativar o *Timer de eventos de alta precisão (HPET)*, com desfazer.
+  * Predefinição *Guerra* do GameOption com a transparência de efeitos no mínimo (30%).
+  * *Checklist fora do app* refeito: o que ligar e desligar em cada aba de configurações do jogo, Painel NVIDIA ou
+    AMD Adrenalin (aparece só o da sua placa), configurações de gráficos do Windows, memória virtual e Resizable BAR.
+
 ## Novidades da 2.2.0
 
 * **Temperatura da CPU no overlay**, lida do sensor do próprio processador (Ryzen: Tctl/Tdie; Intel: pacote) pelo

@@ -318,7 +318,9 @@ def test_nip_parse_utf16():
     assert [(s.id, s.value) for s in p.settings] == [(276158834, 0), (549528094, 1)]
     assert p.skipped == ["Texto"]
     assert nv.describe(p.settings[1])[1] == "ligada"
-    assert len(nv.BDO_DEFAULT.settings) == 7
+    assert len(nv.BDO_DEFAULT.settings) == 19
+    assert len({x.id for x in nv.BDO_DEFAULT.settings}) == 19
+    assert all(x.id in nv.KNOWN for x in nv.BDO_DEFAULT.settings)
 
 
 def test_nv_apply_and_revert_new_profile():
@@ -639,3 +641,35 @@ def test_bdo_cores_rule_and_watcher(monkeypatch, tmp_path):
     state["aff"] = [0, 1, 2, 3]                                      # o jogo mudou sozinho
     w.check_now()
     assert ev == ["ok", "reaplicado"] and state["aff"] == [2, 3]
+
+
+def test_usercache_postfilter(tmp_path, monkeypatch):
+    from lolitos.bdo import usercache
+    monkeypatch.setattr(usercache, "process_running", lambda *a: False)
+    monkeypatch.setattr(usercache, "backups_dir", lambda: tmp_path / "bk")
+    acc = tmp_path / "UserCache" / "397258"
+    (acc / "11").mkdir(parents=True)
+    xml = ('<BlockList Version="2"/>\r\n<GameOptionGlobal Version="2">\r\n\t<SSAO Value="false"/>\r\n'
+           '\t<PostFilter Value="2"/>\r\n</GameOptionGlobal>\r\n').encode("cp1252")
+    (acc / "gamevariable.xml").write_bytes(xml)
+    (acc / "11" / "gamevariable.xml").write_bytes(b'<QuickSlotData Version="2"/>\n')     # sem a linha: não mexe
+    assert usercache.values(tmp_path) == {acc / "gamevariable.xml": "2"}
+    assert usercache.set_value("0", tmp_path) == 1
+    assert (acc / "gamevariable.xml").read_bytes() == xml.replace(b'Value="2"', b'Value="0"')
+    assert (acc / "11" / "gamevariable.xml").read_bytes() == b'<QuickSlotData Version="2"/>\n'
+    assert list((tmp_path / "bk").rglob("gamevariable.xml"))                      # backup antes de gravar
+    assert usercache.set_value("0", tmp_path) == 0
+    assert usercache.set_value({acc / "gamevariable.xml": "2"}, tmp_path) == 1   # desfazer volta o valor antigo
+    assert (acc / "gamevariable.xml").read_bytes() == xml
+    monkeypatch.setattr(usercache, "process_running", lambda *a: True)
+    import pytest
+    with pytest.raises(RuntimeError):
+        usercache.set_value("0", tmp_path)
+
+
+def test_bdo_tips_filter_by_gpu(monkeypatch):
+    from lolitos.bdo import tweaks
+    from types import SimpleNamespace
+    monkeypatch.setattr(tweaks.pc, "detect", lambda: SimpleNamespace(gpu_vendor="amd"))
+    titles = [t for t, _ in tweaks.tips_for_this_pc()]
+    assert any("Adrenalin" in t for t in titles) and not any("Painel NVIDIA" in t for t in titles)

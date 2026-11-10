@@ -60,7 +60,7 @@ def presets(t: Topology) -> list[tuple[str, str, list[int], str]]:
                         "Evita a latência entre CCDs (o jogo não pula de um chiplet para o outro)."))
     if t.smt:
         out.append(("physical", "Um thread por núcleo (sem SMT)", sorted(c.cpus[0] for c in t.cores),
-                    "Usa só a primeira thread de cada núcleo físico."))
+                    "Usa só a primeira thread de cada núcleo físico (0, 2, 4…), como nos guias de FPS do BDO com o Process Lasso."))
     if len(t.cores) >= 6:
         out.append(("no0", "Sem o núcleo 0", [c for c in allc if c not in t.cores[0].cpus],
                     "Deixa o núcleo 0 para o Windows, o Discord e os drivers."))

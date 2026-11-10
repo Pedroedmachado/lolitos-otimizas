@@ -108,10 +108,11 @@ class Preset:
 
 PRESETS = [
     Preset("guerra", "Guerra de Nodes / Cerco — FPS máximo",
-           "Corta efeitos dos outros, lanternas, tendas, roupas e tudo que pesa com 100+ jogadores na tela. "
+           "Corta efeitos dos outros, lanternas, tendas, roupas e tudo que pesa com 100+ jogadores na tela; "
+           "transparência de efeitos no mínimo (30%). "
            "Mantém a sua resolução, a sua escala de UI e os seus sons.",
            {**_CLEAN, **_MASS, "SSAO": 0, "Tessellation": 0, "postFilter": 0, "characterEffect": 0,
-            "skillPostEffect": 0.0, "useFarPlayerOptimization": 1, "sleepModeEnable": 0}),
+            "skillPostEffect": 0.0, "effectAlpha": 0.30, "useFarPlayerOptimization": 1, "sleepModeEnable": 0}),
     Preset("pvp", "PvP pequeno / Arena — limpo e responsivo",
            "Tela limpa para ler animação e grab: sem tremor, sem borrão, sem sangue, efeitos dos outros "
            "fora. Jogadores distantes continuam atualizando normalmente.",

@@ -112,7 +112,17 @@ KNOWN = {
                                        3: "ULMB", 4: "taxa fixa"}),
     0x1194F158: ("Modo G-SYNC do aplicativo", {0: "desligado", 1: "só tela cheia", 2: "tela cheia e janela"}),
     0x20C1221E: ("Otimização encadeada (threaded optimization)", {0: "automática", 1: "ligada", 2: "desligada"}),
-    0x10F9DC81: ("Modo de baixa latência", {0: "desligado", 1: "ligado", 2: "ultra"}),
+    0x0005F543: ("Modo de baixa latência (Painel NVIDIA)", {0: "desligado", 1: "ligado", 2: "ultra"}),
+    0x10835000: ("Baixa latência ultra no driver", {0: "desligada", 1: "ligada"}),
+    0x007BA09E: ("Máximo de quadros pré-renderizados", {0: "controlado pelo app", 1: "1", 2: "2", 3: "3", 4: "4"}),
+    0x10D2BB16: ("Filtragem anisotrópica – modo", {0: "controlada pelo app", 1: "definida pelo usuário"}),
+    0x101E61A9: ("Filtragem anisotrópica – nível", {2: "2x", 4: "4x", 8: "8x", 16: "16x"}),
+    0x00E73211: ("Filtragem anisotrópica – otimização", {0: "desligada", 1: "ligada"}),
+    0x0084CD70: ("Filtragem anisotrópica – otimização de amostra", {0: "desligada", 1: "ligada"}),
+    0x0019BB68: ("Filtragem de textura – viés LOD negativo", {0: "permitir", 1: "travar (clamp)"}),
+    0x00CE2691: ("Filtragem de textura – qualidade", {0xFFFFFFF6: "alta qualidade", 0: "qualidade",
+                                                     10: "desempenho", 20: "alto desempenho"}),
+    0x002ECAF2: ("Filtragem de textura – otimização trilinear", {0: "ligada", 1: "desligada"}),
     0x1057EB71: ("Modo de gerenciamento de energia", {0: "adaptável", 1: "desempenho máximo", 5: "normal"}),
     0x00A879CF: ("Sincronização vertical", {0x08416747: "desligada", 0x47814940: "ligada",
                                             0x60925292: "controlada pelo app"}),
@@ -124,7 +134,7 @@ def describe(s: NipSetting) -> tuple[str, str]:
     return name, vals.get(s.value, f"{s.value} (0x{s.value:X})")
 
 
-# Perfil do Black Desert que acompanha o app (veio do BDO.nip)
+# Perfil do Black Desert que acompanha o app (BDO.nip + o guia de FPS do BDO)
 BDO_DEFAULT = NipProfile(
     "Black Desert",
     ["blackdesert32.exe", "blackdesert64.exe", "blackdesert_launcher.exe"],
@@ -134,7 +144,20 @@ BDO_DEFAULT = NipProfile(
      NipSetting(279476652, 1, "G-SYNC"),
      NipSetting(279476687, 1, "G-SYNC"),
      NipSetting(294973784, 0, "Enable G-SYNC globally"),
-     NipSetting(549528094, 1, "Threaded optimization")],
+     NipSetting(549528094, 1, "Threaded optimization"),
+     # do guia de FPS do BDO (NVIDIA Profile Inspector), além do BDO.nip:
+     NipSetting(0x007BA09E, 1, "Maximum pre-rendered frames"),
+     NipSetting(0x0005F543, 2, "Ultra Low Latency - CPL State"),
+     NipSetting(0x10835000, 1, "Ultra Low Latency - Enabled"),
+     NipSetting(0x00A879CF, 0x08416747, "Vertical Sync"),
+     NipSetting(0x1057EB71, 1, "Power management mode"),
+     NipSetting(0x00E73211, 0, "Anisotropic filter - Optimization"),
+     NipSetting(0x0084CD70, 1, "Anisotropic filter - Sample optimization"),
+     NipSetting(0x10D2BB16, 1, "Anisotropic filtering - Mode"),
+     NipSetting(0x101E61A9, 8, "Anisotropic filtering - Setting"),
+     NipSetting(0x0019BB68, 1, "Texture filtering - Negative LOD bias"),
+     NipSetting(0x00CE2691, 20, "Texture filtering - Quality"),
+     NipSetting(0x002ECAF2, 0, "Texture filtering - Trilinear optimization")],
 )
 
 

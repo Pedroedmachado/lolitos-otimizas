@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QCheckBox, QDoubleSpinBox, QFileDialog, QGridLayo
 
 from lolitos.bdo import game as bdo
 from lolitos.bdo import gameoption as go
-from lolitos.bdo.tweaks import INGAME_TIPS
+from lolitos.bdo.tweaks import tips_for_this_pc
 from lolitos.catalog.presets import PRESETS_BY_ID
 from lolitos.core.system import human_size, process_running, run
 from lolitos.core.tweaks import CATALOG, by_cat
@@ -129,7 +129,7 @@ class BdoPage(Page):
         c.lay.addLayout(hrow(button("Aplicar pacote do Windows para Guerra", "primary", self._apply_pack), None))
         lay.addWidget(c)
         lay.addWidget(self._nvidia_card())
-        lay.addWidget(label("Ajustes do executável do BDO", "h2"))
+        lay.addWidget(label("Ajustes do Windows e do jogo para o BDO", "h2"))
         self.win_list = TweakList(by_cat("bdo") + [CATALOG["nagle_off"], CATALOG["net_throttling_off"]], self,
                                   search=False)
         lay.addWidget(self.win_list)
@@ -557,7 +557,7 @@ class BdoPage(Page):
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 12, 0, 0)
         lay.addWidget(label("O que não dá (ou não deve) ser mudado por arquivo — faça uma vez e pronto.", "muted"))
-        for t, d in INGAME_TIPS:
+        for t, d in tips_for_this_pc():
             c = Card()
             c.lay.addWidget(label(f"<b>{t}</b>", rich=True))
             c.lay.addWidget(label(d, "muted"))

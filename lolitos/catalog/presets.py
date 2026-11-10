@@ -45,7 +45,7 @@ PRESETS = [
     Preset("bdo_guerra", "Black Desert — Guerra de Nodes e Cerco",
            "Tudo de desempenho, entrada e rede recomendado para este PC + prioridade, GPU dedicada e TCP sem "
            "espera para o BlackDesert64.exe. Combine com a predefinição 'Guerra' do GameOption.",
-           lambda: sorted(set(_competitivo() + ["bdo_priority", "bdo_gpu_high", "nagle_off",
+           lambda: sorted(set(_competitivo() + ["bdo_priority", "bdo_gpu_high", "bdo_postfilter_xml", "nagle_off",
                                                 "telemetry_tasks", "wu_no_reboot"]))),
     Preset("competitivo", "Competitivo",
            "FPS máximo e latência mínima: abre mão de economia de energia e efeitos visuais.",
