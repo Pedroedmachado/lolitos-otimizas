@@ -216,15 +216,34 @@ def pick_last(rows: list[tuple[str, float, float]], seconds: int) -> list[str]:
     return [r[0] for r in keep]
 
 
-def concat(exe: Path, parts: list[Path], out: Path) -> Path:
-    lst = out.with_suffix(".txt")
-    lst.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
-    r = run([str(exe), "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
-             "-c", "copy", "-bsf:a", "aac_adtstoasc", "-movflags", "+faststart", str(out)], timeout=300)
-    lst.unlink(missing_ok=True)
+def join_ts(parts: list[Path], dst: Path, append: bool = False) -> Path:
+    """Junta os pedaços byte a byte. Eles vêm de um único fluxo MPEG-TS contínuo, então o resultado é o mesmo
+    fluxo sem emendas (o concat 'por arquivo' do ffmpeg recalculava os horários a cada pedaço e deixava
+    buraquinhos no áudio — o som pipocava a cada segundo)."""
+    with open(dst, "ab" if append else "wb") as out:
+        for p in parts:
+            with open(p, "rb") as f:
+                shutil.copyfileobj(f, out, 1024 * 1024)
+    return dst
+
+
+def remux(exe: Path, ts: Path, out: Path) -> Path:
+    """MPEG-TS → MP4 sem recodificar (o arquivo sai na hora)."""
+    r = run([str(exe), "-hide_banner", "-loglevel", "error", "-y", "-analyzeduration", "20M", "-probesize", "50M",
+             "-fflags", "+genpts", "-i", str(ts), "-map", "0", "-c", "copy", "-bsf:a", "aac_adtstoasc",
+             "-movflags", "+faststart", str(out)], timeout=600)
     if not r.ok or not out.exists():
         raise RuntimeError("não deu para montar o vídeo: " + (r.err or r.out).strip()[-300:])
     return out
+
+
+def concat(exe: Path, parts: list[Path], out: Path) -> Path:
+    ts = out.with_suffix(".ts")
+    join_ts(parts, ts)
+    try:
+        return remux(exe, ts, out)
+    finally:
+        ts.unlink(missing_ok=True)
 
 
 def safe_name(s: str) -> str:
@@ -272,7 +291,7 @@ class Recorder:
         vid_in = 1 if self.audio else 0
         cmd += ["-map", f"{vid_in}:v"]
         if self.audio:
-            cmd += ["-map", "0:a", "-c:a", "aac", "-b:a", "160k", "-ac", "2"]
+            cmd += ["-map", "0:a", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
         cmd += [*video_args(settings.get("clips_encoder") or "libx264", settings.get("clips_quality") or "media"),
                 "-g", str(fps * SEG), "-keyint_min", str(fps * SEG),
                 "-f", "segment", "-segment_time", str(SEG), "-segment_format", "mpegts",
@@ -326,7 +345,8 @@ class Recorder:
         return [(str(self.buf / Path(n).name), a, b) for n, a, b in read_list(self.buf / "list.csv")]
 
     def _collect(self):
-        """Copia para fora do buffer circular os pedaços novos da gravação (uma vez cada)."""
+        """Acrescenta ao arquivo da gravação os pedaços novos que saíram do buffer circular (uma vez cada, em
+        ordem), formando um fluxo contínuo."""
         rec = data_dir() / "clips_rec"
         with self._lock:
             for f, a, _b in self._segments():
@@ -334,13 +354,14 @@ class Recorder:
                 if key in self._copied or key in self._before:
                     continue
                 rec.mkdir(parents=True, exist_ok=True)
-                dst = rec / f"{len(self.rec_parts):06d}.ts"
+                dst = rec / "gravacao.ts"
                 try:
-                    shutil.copy2(f, dst)
+                    join_ts([Path(f)], dst, append=True)
                 except OSError:
                     continue
                 self._copied.add(key)
-                self.rec_parts.append(dst)
+                if dst not in self.rec_parts:
+                    self.rec_parts.append(dst)
 
     def _watch_loop(self):
         while not self._stop.wait(0.4):
@@ -381,7 +402,7 @@ class Recorder:
             raise RuntimeError("a gravação ficou vazia")
         out = clips_dir() / (f"{safe_name(Path(self.game.exe).stem)} {time.strftime('%Y-%m-%d %H-%M-%S')} "
                              "(gravação).mp4")
-        concat(self.exe, self.rec_parts, out)
+        remux(self.exe, self.rec_parts[0], out)
         shutil.rmtree(data_dir() / "clips_rec", ignore_errors=True)
         return out
 

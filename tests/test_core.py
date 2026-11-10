@@ -478,3 +478,28 @@ def test_themes():
         theme.use(key, False)
         assert "qradialgradient" not in theme.qss()
     theme.use("blue", True)
+
+
+def test_audio_timeline():
+    from lolitos.modules.procaudio import Timeline
+    R, W = 48000, 4
+    tl = Timeline(R, W)
+    tl.reset(0)
+    pkt = bytes(480 * W)                               # 10 ms
+    t = lambda frames: frames * 10_000_000 // R        # noqa: E731 — quadros → 100 ns
+    # leitura atrasada: pacotes com horário certo entram em sequência, sem silêncio no meio
+    assert sum(len(x) for x in tl.place(t(0), pkt)) == len(pkt)
+    assert tl.idle(t(480 + 4800)) == b""               # 100 ms sem pacote, mas ainda dentro da folga de 250 ms
+    assert sum(len(x) for x in tl.place(t(480), pkt)) == len(pkt) and tl.written == 960
+    # buraco real (jogo mudo 500 ms): silêncio do tamanho exato antes do próximo pacote
+    out = tl.place(t(960 + 24000), pkt)
+    assert len(out) == 2 and len(out[0]) == 24000 * W and tl.written == 960 + 24000 + 480
+    # silêncio de espera já cobriu parte do pacote que chegou atrasado: só o resto entra
+    tl2 = Timeline(R, W)
+    tl2.reset(0)
+    pad = tl2.idle(t(48000))                           # 1 s sem nada → completa até 750 ms
+    assert len(pad) == 36000 * W
+    late = tl2.place(t(36000 - 240), pkt)              # pacote que começa 5 ms antes do fim do silêncio
+    assert sum(len(x) for x in late) == len(pkt)       # dentro da tolerância: entra inteiro
+    late2 = tl2.place(t(36000 - 4800), pkt)            # começa 100 ms antes: tudo já coberto
+    assert late2 == []

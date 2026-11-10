@@ -10,6 +10,7 @@ silêncio para o som não sair adiantado em relação ao vídeo."""
 from __future__ import annotations
 
 import ctypes
+import queue
 import sys
 import threading
 import time
@@ -158,6 +159,71 @@ def silence_needed(started: float, now: float, frames_written: int, rate: int, s
     return max(0, expected - frames_written)
 
 
+class Timeline:
+    """Coloca cada pacote do Windows no lugar certo da linha do tempo, pelo horário que o próprio Windows marcou
+    (QPC, em unidades de 100 ns), e não pela hora em que o Python conseguiu ler.
+
+    - pacote atrasado na leitura (jogo pesando a CPU): entra inteiro, sem silêncio no meio;
+    - buraco de verdade (o jogo ficou mudo e o Windows não mandou nada): vira silêncio do tamanho exato;
+    - pacote que chegou depois de já termos completado com silêncio: só a parte que sobra é usada;
+    - completar com silêncio só até `idle_lag` atrás do relógio, para dar tempo de pacotes atrasados chegarem."""
+
+    def __init__(self, rate: int, width: int, tol_ms: float = 20, idle_lag_ms: float = 250):
+        self.rate, self.width = rate, width
+        self.tol = int(rate * tol_ms / 1000)
+        self.idle_lag = int(idle_lag_ms * 10_000)        # em 100 ns
+        self.t0 = 0
+        self.written = 0
+
+    def reset(self, now_100ns: int):
+        self.t0, self.written = now_100ns, 0
+
+    def _frame_at(self, t_100ns: int) -> int:
+        return (t_100ns - self.t0) * self.rate // 10_000_000
+
+    def place(self, pos_100ns: int | None, data: bytes) -> list[bytes]:
+        frames = len(data) // self.width
+        if not frames:
+            return []
+        if not pos_100ns:                                 # sem horário: segue em sequência
+            self.written += frames
+            return [data]
+        at = self._frame_at(pos_100ns)
+        out = []
+        if at > self.written + self.tol:                  # buraco real antes deste pacote
+            gap = at - self.written
+            out.append(bytes(gap * self.width))
+            self.written += gap
+        elif at < self.written - self.tol:                # parte deste pacote já foi coberta com silêncio
+            skip = self.written - at
+            if skip >= frames:
+                return out
+            data = data[skip * self.width:]
+            frames -= skip
+        out.append(data)
+        self.written += frames
+        return out
+
+    def idle(self, now_100ns: int) -> bytes:
+        """Silêncio para quando o Windows não manda nada (o jogo está mudo), mantendo o áudio junto com o vídeo."""
+        target = self._frame_at(now_100ns - self.idle_lag)
+        gap = target - self.written
+        if gap <= 0:
+            return b""
+        self.written += gap
+        return bytes(gap * self.width)
+
+
+def qpc_100ns() -> int:
+    """Relógio do Windows (o mesmo dos horários dos pacotes de áudio) em unidades de 100 ns."""
+    if not IS_WIN:
+        return int(time.perf_counter() * 10_000_000)
+    c, f = ctypes.c_int64(), ctypes.c_int64()
+    ctypes.windll.kernel32.QueryPerformanceCounter(byref(c))
+    ctypes.windll.kernel32.QueryPerformanceFrequency(byref(f))
+    return c.value * 10_000_000 // f.value
+
+
 # ---------------------------------------------------------------- captura
 class AudioCapture(threading.Thread):
     """Lê o áudio e entrega blocos de bytes em `sink(bytes)`. `pid`: só esse processo (e filhos); 0: o PC todo."""
@@ -172,6 +238,22 @@ class AudioCapture(threading.Thread):
         self.error = ""
         self.ready = threading.Event()
         self._stop = threading.Event()
+        self._q: queue.SimpleQueue = queue.SimpleQueue()
+        self._tl: Timeline | None = None
+        self._reset_pending = True
+        threading.Thread(target=self._writer, daemon=True).start()
+
+    def _writer(self):
+        """Entrega ao ffmpeg numa thread separada: se o ffmpeg demorar para ler, a captura não para (antes o
+        buffer do Windows estourava e o som picotava)."""
+        while True:
+            item = self._q.get()
+            if item is None:
+                return
+            try:
+                self.sink(item)
+            except Exception:  # noqa: BLE001
+                pass
 
     # o formato que o ffmpeg recebe (definido antes de começar a entregar dados)
     @property
@@ -181,10 +263,11 @@ class AudioCapture(threading.Thread):
 
     def stop(self):
         self._stop.set()
+        self._q.put(None)
 
     def reset_clock(self):
-        """Chamado quando o ffmpeg começa a ler: o relógio do silêncio passa a contar daqui."""
-        self._t0, self._written = time.perf_counter(), 0
+        """Chamado quando o ffmpeg começa a ler: a linha do tempo do áudio começa aqui (junto com o vídeo)."""
+        self._reset_pending = True
 
     def run(self):
         ole32 = ctypes.windll.ole32
@@ -238,7 +321,7 @@ class AudioCapture(threading.Thread):
                  | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY)
         init = _method(client, 3, c_int, ctypes.c_uint32, c_longlong, c_longlong, POINTER(WAVEFORMATEX), c_void_p)
         try:
-            init(AUDCLNT_SHAREMODE_SHARED, flags, 2_000_000, 0, byref(wf), None)
+            init(AUDCLNT_SHAREMODE_SHARED, flags, 10_000_000, 0, byref(wf), None)   # 1 s de folga
         except OSError:
             _release(client)
             raise
@@ -268,7 +351,7 @@ class AudioCapture(threading.Thread):
             tag = sub.Data1
         init = _method(client.value, 3, c_int, ctypes.c_uint32, c_longlong, c_longlong, POINTER(WAVEFORMATEX),
                        c_void_p)
-        init(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 2_000_000, 0, pwf, None)
+        init(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 10_000_000, 0, pwf, None)
         ole32.CoTaskMemFree(pwf)
         if tag == WAVE_FORMAT_IEEE_FLOAT and bits == 32:
             self.fmt = ("f32le", rate, ch)
@@ -297,32 +380,34 @@ class AudioCapture(threading.Thread):
         _f, rate, ch = self.fmt
         width = {"s16le": 2, "s24le": 3, "s32le": 4, "f32le": 4}[_f] * ch
         _method(client, 10)()                                                   # Start
+        self._tl = Timeline(rate, width)
         self.ready.set()
-        self.reset_clock()
         try:
             while not self._stop.is_set():
                 if ev:
-                    k32.WaitForSingleObject(ev, 20)
+                    k32.WaitForSingleObject(ev, 10)
                 else:
-                    time.sleep(0.01)
+                    time.sleep(0.005)
+                if self._reset_pending:
+                    self._reset_pending = False
+                    self._tl.reset(qpc_100ns())
                 n = c_uint32(0)
                 next_size(byref(n))
                 while n.value and not self._stop.is_set():
-                    data, frames, flags = c_void_p(), c_uint32(0), ctypes.c_ulong(0)
-                    get_buf(byref(data), byref(frames), byref(flags), None, None)
+                    data, frames, flags, qpc = c_void_p(), c_uint32(0), ctypes.c_ulong(0), c_uint64(0)
+                    get_buf(byref(data), byref(frames), byref(flags), None, byref(qpc))
                     size = frames.value * width
                     if flags.value & AUDCLNT_BUFFERFLAGS_SILENT or not data.value:
                         chunk = bytes(size)
                     else:
                         chunk = ctypes.string_at(data.value, size)
                     rel_buf(frames)
-                    self.sink(chunk)
-                    self._written += frames.value
+                    for part in self._tl.place(qpc.value, chunk):
+                        self._q.put(part)
                     next_size(byref(n))
-                gap = silence_needed(self._t0, time.perf_counter(), self._written, rate)
-                if gap:
-                    self.sink(bytes(gap * width))
-                    self._written += gap
+                pad = self._tl.idle(qpc_100ns())
+                if pad:
+                    self._q.put(pad)
         finally:
             try:
                 _method(client, 11)()                                           # Stop
