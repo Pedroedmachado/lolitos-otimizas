@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title Chinese Control - gerando o instalador
 rem =====================================================================
-rem  Gera dist\ChineseControl-2.1.0-Setup.exe com dois cliques.
+rem  Gera dist\ChineseControl-2.2.0-Setup.exe com dois cliques.
 rem  Instala sozinho (pelo winget) o que faltar: Python 3.12 e Inno Setup 6.
 rem =====================================================================
 setlocal EnableDelayedExpansion
@@ -72,9 +72,9 @@ echo  [5/5] Montando o instalador...
 
 echo.
 echo  =====================================================================
-echo   PRONTO:  dist\ChineseControl-2.1.0-Setup.exe
+echo   PRONTO:  dist\ChineseControl-2.2.0-Setup.exe
 echo  =====================================================================
-explorer /select,"%~dp0dist\ChineseControl-2.1.0-Setup.exe"
+explorer /select,"%~dp0dist\ChineseControl-2.2.0-Setup.exe"
 pause
 exit /b 0
 

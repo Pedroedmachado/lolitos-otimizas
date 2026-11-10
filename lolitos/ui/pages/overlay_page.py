@@ -6,6 +6,7 @@ from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QSlider, QVBoxLayout
 
 from lolitos.core import settings
+from lolitos.i18n import tr
 from lolitos.modules import fps
 from lolitos.ui.theme import C
 from lolitos.ui.widgets import Card, Page, TaskDialog, Toggle, button, card_header, hrow, label, pill
@@ -97,7 +98,10 @@ class OverlayPage(Page):
         self.fps_lbl = label("", rich=True)
         right.addWidget(self.fps_lbl)
         self.pm_btn = button("Baixar o PresentMon agora", "primary", self._download_pm)
-        right.addLayout(hrow(self.pm_btn, None))
+        self.pawn_btn = button("Ativar a temperatura do processador", "primary", self._install_pawnio)
+        self.pawn_btn.setToolTip(tr("Instala o PawnIO (driver assinado e de código aberto, o mesmo do "
+                                    "LibreHardwareMonitor) para ler o sensor do próprio processador."))
+        right.addLayout(hrow(self.pm_btn, self.pawn_btn, None))
         right.addStretch()
         row.addLayout(right, 1)
         top.lay.addLayout(row)
@@ -198,9 +202,20 @@ class OverlayPage(Page):
             txt = "FPS: começa quando o overlay é ligado."
         gpu_txt = "GPU °C: lido do driver da placa." if __import__("lolitos.modules.gpu", fromlist=["x"]).available() \
             else "GPU °C: só placas NVIDIA."
-        self.fps_lbl.setText(f"{txt}<br>{gpu_txt}<br>CPU °C: com o LibreHardwareMonitor ou o HWiNFO abertos, ou "
-                             "pela zona térmica da placa-mãe.")
+        from lolitos.modules import pawnio
+        pst = pawnio.status()
+        if pst == "ok":
+            cpu_txt = f"<span style='color:{C['ok']}'>{tr('CPU °C: sensor do processador (PawnIO).')}</span>"
+        elif pst == "PawnIO não instalado":
+            cpu_txt = (f"<span style='color:{C['warn']}'>{tr('CPU °C: aproximada (placa-mãe).')}</span> "
+                       + tr("Para a temperatura real do processador, clique em 'Ativar a temperatura do "
+                            "processador'."))
+        else:
+            cpu_txt = tr("CPU °C: {} — usando o LibreHardwareMonitor (se aberto) ou a placa-mãe.").replace(
+                "{}", tr(pst))
+        self.fps_lbl.setText(f"{txt}<br>{gpu_txt}<br>{cpu_txt}")
         self.pm_btn.setVisible(pm is None)
+        self.pawn_btn.setVisible(pawnio.supported() and not pawnio.installed())
         self.hk_lbl.setText(f"Atalho ativo: {settings.get('overlay_hotkey')}")
 
     def _show_now(self, on):
@@ -209,6 +224,16 @@ class OverlayPage(Page):
         if on != self.main.overlay.isVisible():
             self.main.overlay_toggle()
         QTimer.singleShot(800, self._status)
+
+    def _install_pawnio(self):
+        from lolitos.modules import pawnio
+        from lolitos.ui.widgets import confirm
+        if not confirm(self, "Temperatura do processador",
+                       "Instalar o PawnIO? É um driver assinado e de código aberto (pawnio.eu), usado pelo "
+                       "LibreHardwareMonitor e pelo Fan Control, que só lê os sensores de temperatura do processador. "
+                       "Nada é injetado em jogo. Pode ser removido em Configurações › Aplicativos.", yes="Instalar"):
+            return
+        TaskDialog(self, "Temperatura do processador", pawnio.install, on_done=lambda _: self._status()).exec()
 
     def _download_pm(self):
         def work(progress=None):

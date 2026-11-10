@@ -1,4 +1,5 @@
-"""Temperatura da CPU sem driver próprio: LibreHardwareMonitor/HWiNFO (se abertos) ou zona térmica ACPI."""
+"""Temperatura da CPU: PawnIO (sensor do próprio processador, se instalado), LibreHardwareMonitor (se aberto) ou a
+zona térmica ACPI da placa-mãe (aproximada; em muitos PCs fica parada)."""
 from __future__ import annotations
 
 import time
@@ -9,7 +10,13 @@ _cache = {"t": 0.0, "v": None, "src": ""}
 
 
 def cpu_temp(max_age: float = 5.0) -> tuple[float | None, str]:
-    if time.time() - _cache["t"] < max_age:
+    from lolitos.modules import pawnio
+    t = pawnio.cpu_temp()            # leitura direta e barata: pode ser chamada a cada segundo
+    if t is not None:
+        return t, "sensor do processador (PawnIO)"
+    # as outras fontes abrem o PowerShell: com nada encontrado, só tenta de novo depois de 1 minuto
+    age = max_age if _cache["v"] is not None else max(max_age, 60)
+    if time.time() - _cache["t"] < age:
         return _cache["v"], _cache["src"]
     v, src = None, ""
     rows = powershell_json(

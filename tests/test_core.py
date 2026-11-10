@@ -560,3 +560,11 @@ def test_clips_service_modes(monkeypatch):
     svc.set_capture(True)                              # ligou à mão sem jogo: grava a tela
     svc._tick("ffmpeg")
     assert svc.capturing() and started[-1] == "Tela"
+
+
+def test_pawnio_conversions():
+    from lolitos.modules.pawnio import amd_tctl, intel_package
+    assert amd_tctl((50 * 8) << 21) == 50.0
+    assert amd_tctl(((99 * 8) << 21) | 0x80000) == 50.0          # faixa estendida: −49 °C
+    assert intel_package(100 << 16, (1 << 31) | (40 << 16)) == 60.0
+    assert intel_package(95 << 16, 40 << 16) is None                # leitura inválida (bit 31 desligado)

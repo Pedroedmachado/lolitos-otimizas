@@ -2664,5 +2664,22 @@
 "O clipe salva os últimos {}. O buffer ocupa uns {} MB no disco, só enquanto a captura está ligada ({}p como referência).": "The clip saves the last {}. The buffer takes about {} MB on disk, only while capture is on ({}p as reference).",
 "Captura ligada em {} ({} salva os últimos {} s)": "Capture on in {} ({} saves the last {} s)",
 "A captura está desligada: ligue em Clipes (ou abra um jogo com a captura automática ligada).": "Capture is off: turn it on in Clips (or open a game with automatic capture on).",
-"Gravando… ({} de novo para parar)": "Recording… ({} again to stop)"
+"Gravando… ({} de novo para parar)": "Recording… ({} again to stop)",
+"Ativar a temperatura do processador": "Turn on processor temperature",
+"Instala o PawnIO (driver assinado e de código aberto, o mesmo do LibreHardwareMonitor) para ler o sensor do próprio processador.": "Installs PawnIO (signed, open-source driver, the same one LibreHardwareMonitor uses) to read the processor's own sensor.",
+"CPU °C: sensor do processador (PawnIO).": "CPU °C: processor sensor (PawnIO).",
+"CPU °C: aproximada (placa-mãe).": "CPU °C: approximate (motherboard).",
+"Para a temperatura real do processador, clique em 'Ativar a temperatura do processador'.": "For the real processor temperature, click 'Turn on processor temperature'.",
+"CPU °C: {} — usando o LibreHardwareMonitor (se aberto) ou a placa-mãe.": "CPU °C: {} — using LibreHardwareMonitor (if open) or the motherboard.",
+"processador sem suporte": "processor not supported",
+"PawnIO não instalado": "PawnIO not installed",
+"módulo do PawnIO não encontrado (reinstale o app)": "PawnIO module not found (reinstall the app)",
+"Temperatura do processador": "Processor temperature",
+"Instalar o PawnIO? É um driver assinado e de código aberto (pawnio.eu), usado pelo LibreHardwareMonitor e pelo Fan Control, que só lê os sensores de temperatura do processador. Nada é injetado em jogo. Pode ser removido em Configurações › Aplicativos.": "Install PawnIO? It's a signed, open-source driver (pawnio.eu), used by LibreHardwareMonitor and Fan Control, that only reads the processor's temperature sensors. Nothing is injected into games. It can be removed in Settings › Apps.",
+"Instalando o PawnIO (driver assinado, código aberto) pelo winget…": "Installing PawnIO (signed driver, open source) through winget…",
+"PawnIO instalado. A temperatura do processador já aparece no overlay.": "PawnIO installed. The processor temperature now shows in the overlay.",
+"O PawnIO já está instalado.": "PawnIO is already installed.",
+"O winget (Instalador de Aplicativo da Microsoft Store) não está disponível neste Windows.": "winget (App Installer from the Microsoft Store) isn't available on this Windows.",
+"sensor do processador (PawnIO)": "processor sensor (PawnIO)",
+"Instalar": "Install"
 }

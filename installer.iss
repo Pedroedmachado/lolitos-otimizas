@@ -1,7 +1,7 @@
 ﻿; Instalador do Chinese Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Chinese Control"
-#define AppVersion "2.1.0"
+#define AppVersion "2.2.0"
 #define AppExe "ChineseControl.exe"
 #define AppId "ChineseControl"
 ; nomes antigos do app (até a 1.7.x: Lolitos Control; até a 1.3.x: Lolitos Otimizações)
@@ -83,6 +83,8 @@ Source: "dist\ChineseControl\*"; DestDir: "{app}"; Flags: recursesubdirs createa
 Source: "legal\*.txt"; DestDir: "{app}\legal"; Flags: ignoreversion
 ; PresentMon (Intel, MIT) para o FPS do overlay — baixado e conferido por tools\get_presentmon.py
 Source: "vendor\PresentMon.exe"; DestDir: "{app}\tools"; Flags: ignoreversion skipifsourcedoesntexist
+; módulos assinados do PawnIO (LGPL-2.1) para a temperatura da CPU — baixados por tools\get_pawnio_modules.py
+Source: "vendor\pawnio\*"; DestDir: "{app}\tools\pawnio"; Flags: ignoreversion skipifsourcedoesntexist
 
 [InstallDelete]
 ; restos das versões com os nomes antigos

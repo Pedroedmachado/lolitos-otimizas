@@ -47,6 +47,12 @@ jobs:
       - name: PresentMon (FPS do overlay)
         run: python tools/get_presentmon.py
 
+      - name: Módulos do PawnIO (temperatura da CPU)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/get_pawnio_modules.py
+
       - name: Inno Setup
         shell: pwsh
         run: |
