@@ -45,6 +45,8 @@ class BdoPage(Page):
 
         tabs = QTabWidget()
         tabs.addTab(self._tab_windows(), "Windows para o BDO")
+        from lolitos.ui.bdo_cores import CoresPanel
+        tabs.addTab(CoresPanel(self), "Núcleos da CPU")
         tabs.addTab(self._tab_options(), "Opções do jogo (GameOption)")
         tabs.addTab(self._tab_network(), "Rede do servidor")
         tabs.addTab(self._tab_crashes(), "Travamentos e caches")

@@ -568,3 +568,74 @@ def test_pawnio_conversions():
     assert amd_tctl(((99 * 8) << 21) | 0x80000) == 50.0          # faixa estendida: −49 °C
     assert intel_package(100 << 16, (1 << 31) | (40 << 16)) == 60.0
     assert intel_package(95 << 16, 40 << 16) is None                # leitura inválida (bit 31 desligado)
+
+
+def _glpi(cores, l3s):
+    """Monta um buffer igual ao do GetLogicalProcessorInformationEx (núcleos + caches L3)."""
+    import struct
+    out = b""
+    for cpus in cores:
+        mask = sum(1 << c for c in cpus)
+        body = struct.pack("<BB20xH", 0, 0, 1) + struct.pack("<QH6x", mask, 0)
+        out += struct.pack("<II", 0, 8 + len(body)) + body
+    for size, cpus in l3s:
+        mask = sum(1 << c for c in cpus)
+        body = struct.pack("<BBHII18xH", 3, 16, 64, size, 0, 1) + struct.pack("<QH6x", mask, 0)
+        out += struct.pack("<II", 2, 8 + len(body)) + body
+    return out
+
+
+def test_cputopo_x3d_dual_ccd_and_presets():
+    from lolitos.bdo import cores
+    from lolitos.modules import cputopo
+    MB = 1024 ** 2
+    phys = [[2 * i, 2 * i + 1] for i in range(16)]                  # 16 núcleos, 32 threads (como um 9950X3D)
+    raw = _glpi(phys, [(96 * MB, list(range(0, 16))), (32 * MB, list(range(16, 32)))])
+    c, l3 = cputopo.parse(raw)
+    assert len(c) == 16 and c[3][1] == [6, 7]
+    assert sorted(s for s, _ in l3) == [32 * MB, 96 * MB]
+    t = cputopo.build(c, l3, "AMD Ryzen 9 9950X3D 16-Core Processor")
+    assert len(t.ccds) == 2 and t.ccds[0].vcache and not t.ccds[1].vcache
+    assert t.cores[9].ccd == 1 and t.smt and len(t.threads) == 32
+    assert cores.recommended(t) == list(range(16))
+    keys = [k for k, *_ in cores.presets(t)]
+    assert keys[:2] == ["all", "rec"] and "vcache" in keys and "freq" in keys and "physical" in keys
+    phys_only = dict((k, cpus) for k, _, cpus, _ in cores.presets(t))["physical"]
+    assert phys_only == list(range(0, 32, 2))
+
+
+def test_cputopo_single_ccd():
+    from lolitos.bdo import cores
+    from lolitos.modules import cputopo
+    phys = [[2 * i, 2 * i + 1] for i in range(8)]
+    c, l3 = cputopo.parse(_glpi(phys, [(96 * 1024 ** 2, list(range(16)))]))
+    t = cputopo.build(c, l3, "AMD Ryzen 7 7800X3D 8-Core Processor")
+    assert len(t.ccds) == 1 and t.ccds[0].vcache
+    assert cores.recommended(t) == list(range(2, 16))                # tudo menos o núcleo 0
+    small = cputopo.build([(0, [0, 1]), (0, [2, 3])], [], "AMD Athlon")
+    assert cores.recommended(small) == [0, 1, 2, 3]
+
+
+def test_bdo_cores_rule_and_watcher(monkeypatch, tmp_path):
+    from lolitos.bdo import cores
+    store = {}
+    monkeypatch.setattr(cores.settings, "get", lambda k, d=None: store.get(k, d))
+    monkeypatch.setattr(cores.settings, "set", lambda k, v: store.__setitem__(k, v))
+    assert cores.rule() == {"enabled": False, "method": "affinity", "cpus": []}
+    w = cores.Watcher()
+    assert w.check_now() == "regra desligada"
+    cores.save_rule(enabled=True, cpus=[2, 3])
+    monkeypatch.setattr(cores, "bdo_pids", lambda: [])
+    assert w.check_now() == "esperando o BDO abrir"
+    state = {"aff": [0, 1, 2, 3]}
+    ev = []
+    monkeypatch.setattr(cores, "bdo_pids", lambda: [42])
+    monkeypatch.setattr(cores, "current", lambda pid, m: state["aff"])
+    monkeypatch.setattr(cores, "apply_pid", lambda pid, m, cpus: state.__setitem__("aff", list(cpus)) or "")
+    w.on_event = lambda k, m: ev.append(k)
+    assert "aplicado" in w.check_now() and state["aff"] == [2, 3] and ev == ["ok"]
+    w.check_now()
+    assert ev == ["ok"]                                              # já estava certo: nada
+    state["aff"] = [0, 1, 2, 3]                                      # o jogo mudou sozinho
+    w.check_now()
+    assert ev == ["ok", "reaplicado"] and state["aff"] == [2, 3]

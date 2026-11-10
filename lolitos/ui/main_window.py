@@ -182,6 +182,9 @@ class MainWindow(QMainWindow):
         self.clips = None
         if settings.get("clips_enabled"):
             self.start_clips()
+        self.bdo_cores = None
+        if (settings.get("bdo_cores") or {}).get("enabled"):
+            self.start_bdo_cores()
         self.prebuild_pages()
         self._update_info = None
         if settings.get("check_updates", True):
@@ -514,7 +517,27 @@ class MainWindow(QMainWindow):
         if getattr(page, "_built", False) and hasattr(page, "_refresh"):
             page._refresh()
 
+    # ---------------------------------------------------------------- núcleos do BDO (regra tipo Process Lasso)
+    def start_bdo_cores(self):
+        from lolitos.bdo.cores import Watcher
+        from lolitos.ui.widgets import ui_call
+        self.stop_bdo_cores()
+
+        def ev(kind, msg):
+            from lolitos.i18n import tr
+            if self.tray.isVisible() and kind in ("ok", "aviso"):
+                ui_call(lambda: self.tray.showMessage("Black Desert", tr(msg)))
+        self.bdo_cores = Watcher(ev)
+        self.bdo_cores.start()
+
+    def stop_bdo_cores(self):
+        w = getattr(self, "bdo_cores", None)
+        if w:
+            w.stop()
+        self.bdo_cores = None
+
     def quit(self):
+        self.stop_bdo_cores()
         self.stop_clips()
         self.unregister_hotkey()
         self.overlay.hide()
