@@ -60,7 +60,7 @@ class Speedometer(QWidget):
         g.setColorAt(0.0, QColor("#ff3b5c"))
         pen = QPen(g, r * 0.16, Qt.SolidLine, Qt.FlatCap)
         p.setPen(pen)
-        p.drawArc(rect, start * 16, int(span * 16 * self.value / 100))
+        p.drawArc(rect, start * 16, span * 16)          # o arco colorido inteiro; o ponteiro marca a nota
         # marcações e números
         p.setFont(QFont("Segoe UI", max(7, int(r * 0.075)), QFont.Bold))
         for i in range(0, 101, 5):
@@ -125,12 +125,15 @@ class Ring(QWidget):
 class LineChart(QWidget):
     """Gráfico dos últimos 60 s, com grade em 25/50/75/100% e área preenchida."""
 
-    def __init__(self, n: int = 60):
+    def __init__(self, n: int = 60, color: str = "", fmt=None):
         super().__init__()
         self.data: deque[float] = deque(maxlen=n)
+        self.data2: deque[float] = deque(maxlen=n)      # segunda linha (cinza), ex.: upload
         self.n = n
         self.scale_max = 100.0
         self.fixed = True
+        self.color = color                              # "" = cor de destaque do tema
+        self.fmt = fmt                                  # rótulo do eixo quando a escala não é %
         self.setMinimumHeight(150)
 
     def reset(self, fixed=True):
@@ -139,55 +142,75 @@ class LineChart(QWidget):
         self.scale_max = 100.0
         self.update()
 
-    def push(self, v: float):
+    def push(self, v: float, v2: float | None = None):
         self.data.append(max(0.0, v))
+        if v2 is not None:
+            self.data2.append(max(0.0, v2))
         if not self.fixed:
-            self.scale_max = max(1.0, max(self.data) * 1.2)
+            self.scale_max = max(1.0, max([*self.data, *self.data2]) * 1.2)
         self.update()
 
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        left, bottom = 40, 20
-        w, h = self.width() - left - 8, self.height() - bottom - 6
+        bottom = 20
         p.setFont(QFont("Segoe UI", 7))
-        for frac in (0, 0.25, 0.5, 0.75, 1):
+        fm = p.fontMetrics()
+        labs = [(frac, f"{frac * 100:.0f}%" if self.fixed else
+                 self.fmt(self.scale_max * frac) if self.fmt else f"{self.scale_max * frac:.0f}")
+                for frac in (0, 0.25, 0.5, 0.75, 1)]
+        left = max(34, max(fm.horizontalAdvance(t) for _, t in labs) + 10)
+        w, h = self.width() - left - 8, self.height() - bottom - 6
+        for frac, lab in labs:
             y = 6 + h * (1 - frac)
             p.setPen(QPen(QColor(C["border"]), 1, Qt.DashLine))
             p.drawLine(QPointF(left, y), QPointF(left + w, y))
             p.setPen(QColor(C["muted"]))
-            lab = f"{frac * 100:.0f}%" if self.fixed else f"{self.scale_max * frac:.0f}"
             p.drawText(QRectF(0, y - 7, left - 6, 14), Qt.AlignRight | Qt.AlignVCenter, lab)
-        for i, t in enumerate(("60 s", "45 s", "30 s", "15 s", "agora")):
+        from lolitos.i18n import tr
+        for i, t in enumerate(("60 s", "45 s", "30 s", "15 s", tr("agora"))):
             x = left + w * i / 4
-            p.drawText(QRectF(x - 20, 6 + h + 3, 40, 14), Qt.AlignCenter, t)
+            if i == 4:
+                p.drawText(QRectF(x - 60, 6 + h + 3, 60, 14), Qt.AlignRight | Qt.AlignVCenter, t)
+            elif i == 0:
+                p.drawText(QRectF(x, 6 + h + 3, 60, 14), Qt.AlignLeft | Qt.AlignVCenter, t)
+            else:
+                p.drawText(QRectF(x - 20, 6 + h + 3, 40, 14), Qt.AlignCenter, t)
         if len(self.data) < 2:
             return
-        pts = []
-        start = self.n - len(self.data)
-        for i, v in enumerate(self.data):
-            x = left + w * (start + i) / (self.n - 1)
-            y = 6 + h * (1 - min(1.0, v / self.scale_max))
-            pts.append(QPointF(x, y))
-        path = QPainterPath(pts[0])
-        for a, b in zip(pts, pts[1:]):
-            mx = (a.x() + b.x()) / 2
-            path.cubicTo(QPointF(mx, a.y()), QPointF(mx, b.y()), b)
+        col = QColor(self.color or C["accent"])
+
+        def points(series):
+            start = self.n - len(series)
+            return [QPointF(left + w * (start + i) / (self.n - 1), 6 + h * (1 - min(1.0, v / self.scale_max)))
+                    for i, v in enumerate(series)]
+
+        def curve(pts):
+            path = QPainterPath(pts[0])
+            for a, b in zip(pts, pts[1:]):
+                mx = (a.x() + b.x()) / 2
+                path.cubicTo(QPointF(mx, a.y()), QPointF(mx, b.y()), b)
+            return path
+        if len(self.data2) >= 2:                       # segunda série: linha cinza, sem área
+            p.setPen(QPen(QColor(C["muted"]), 1.4))
+            p.drawPath(curve(points(self.data2)))
+        pts = points(self.data)
+        path = curve(pts)
         area = QPainterPath(path)
         area.lineTo(pts[-1].x(), 6 + h)
         area.lineTo(pts[0].x(), 6 + h)
         area.closeSubpath()
         g = QLinearGradient(0, 6, 0, 6 + h)
-        c1 = QColor(C["accent"])
+        c1 = QColor(col)
         c1.setAlpha(90)
-        c2 = QColor(C["accent"])
+        c2 = QColor(col)
         c2.setAlpha(0)
         g.setColorAt(0, c1)
         g.setColorAt(1, c2)
         p.fillPath(area, g)
-        p.setPen(QPen(QColor(C["accent"]), 2.2))
+        p.setPen(QPen(col, 2.2))
         p.drawPath(path)
-        p.setBrush(QColor(C["accent2"]))
+        p.setBrush(col.lighter(130))
         p.setPen(QPen(QColor("#ffffff"), 1.5))
         p.drawEllipse(pts[-1], 4, 4)
 

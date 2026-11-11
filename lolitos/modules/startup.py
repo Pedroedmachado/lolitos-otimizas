@@ -142,3 +142,18 @@ def self_autostart_enabled() -> bool:
     return run(["schtasks", "/Query", "/TN", APP_ID]).ok
 
 
+
+
+def exe_path(command: str) -> str:
+    """'"C:\\...\\Discord\\Update.exe" --processStart Discord.exe' → 'C:\\...\\Update.exe' (para o ícone)."""
+    import re
+    c = expand((command or "").strip())
+    if c.startswith('"'):
+        end = c.find('"', 1)
+        return c[1:end] if end > 0 else c.strip('"')
+    m = re.match(r"(.+?\.(?:exe|lnk|bat|cmd|com))(?:\s|$)", c, re.I)
+    return m.group(1) if m else c.split(" ")[0]
+
+
+def all_users(e: Entry) -> bool:
+    return e.ahive == "HKLM"

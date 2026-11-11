@@ -619,45 +619,104 @@ class CheckupPage(Page):
         self.run_check()
 
     def run_check(self):
+        """Mostra todos os itens como 'Medindo…' e vai preenchendo cada um assim que é medido."""
         self.summary.setText(tr("Analisando o PC…"))
         self.run_btn.setEnabled(False)
-        run_async(checkup.run_checkup, on_done=self._show, on_error=lambda e: self.run_btn.setEnabled(True))
-
-    def _show(self, checks):
-        self.run_btn.setEnabled(True)
-        self.checks = checks
+        self.checks = []
         while self.box.count():
             w = self.box.takeAt(0).widget()
             if w:
+                w.deleteLater()
+        self.rows: dict = {}
+        for cid, title in checkup.PLANNED:
+            r = self._row_wait(title)
+            self.rows[cid] = r
+            self.box.addWidget(r)
+        self._n_planned = len(checkup.PLANNED)
+        run_async(lambda progress=None: checkup.run_checkup(on_check=progress), on_progress=self._one,
+                  on_done=self._show, on_error=lambda e: self.run_btn.setEnabled(True))
+
+    def _row_wait(self, title: str) -> QWidget:
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(4, 6, 4, 6)
+        rl.setSpacing(12)
+        dot = QLabel("◌")
+        dot.setStyleSheet(f"color:{C['muted']}; font-size:13pt;")
+        rl.addWidget(dot, 0, Qt.AlignTop)
+        rl.addWidget(label(title), 1)
+        rl.addWidget(label("Medindo…", "muted", wrap=False), 0, Qt.AlignTop | Qt.AlignRight)
+        return row
+
+    def _row(self, c) -> QWidget:
+        colors = {"ok": C["ok"], "atencao": C["warn"], "corrigir": C["bad"], "info": C["info"]}
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(4, 6, 4, 6)
+        rl.setSpacing(12)
+        dot = QLabel("●")
+        dot.setStyleSheet(f"color:{colors.get(c.state, C['muted'])}; font-size:13pt;")
+        rl.addWidget(dot, 0, Qt.AlignTop)
+        col = QVBoxLayout()
+        col.setSpacing(0)
+        col.addWidget(label(c.title))
+        if c.detail:
+            col.addWidget(label(c.detail, "muted"))
+        rl.addLayout(col, 1)
+        if c.value:
+            rl.addWidget(label(c.value, wrap=False), 0, Qt.AlignTop | Qt.AlignRight)
+        if c.state in ("atencao", "corrigir") and c.fix in FIX_PAGE and self.main:
+            rl.addWidget(button("Corrigir", on_click=lambda _=False, p=FIX_PAGE[c.fix]: self.main.go(p)),
+                         0, Qt.AlignVCenter)
+        elif c.state in ("atencao", "corrigir") and c.fix == "relaunch_admin" and self.main:
+            from lolitos.core.system import relaunch_as_admin
+            rl.addWidget(button("Abrir como admin", on_click=lambda: relaunch_as_admin() and self.main.quit()))
+        return row
+
+    def _put(self, c):
+        """Troca o 'Medindo…' do item pelo resultado (itens repetidos, como os HDs, entram logo abaixo)."""
+        new = self._row(c)
+        old = self.rows.get(c.id)
+        idx = self.box.indexOf(old) if old is not None else -1
+        if idx >= 0 and not getattr(old, "_filled", False):
+            self.box.insertWidget(idx, new)
+            self.box.removeWidget(old)
+            old.deleteLater()
+        else:
+            after = self.box.indexOf(old) + 1 if old is not None and self.box.indexOf(old) >= 0 else self.box.count()
+            self.box.insertWidget(after, new)
+        new._filled = True
+        self.rows[c.id] = new
+        try:
+            from lolitos.ui.anim import fade_only
+            fade_only(new)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _one(self, c):
+        if not hasattr(c, "state"):
+            return
+        self.checks.append(c)
+        self._put(c)
+        done = len({x.id for x in self.checks})
+        self.summary.setText(tr("Analisando o PC…") + f"  {done}/{self._n_planned}")
+
+    def _show(self, checks):
+        self.run_btn.setEnabled(True)
+        got = {(c.id, c.title) for c in self.checks}
+        for c in checks:                   # algum que não chegou pelo caminho (não deve acontecer)
+            if (c.id, c.title) not in got:
+                self._put(c)
+        self.checks = checks
+        ids = {c.id for c in checks}
+        for cid, w in list(self.rows.items()):   # itens que não se aplicam a este PC (ex.: sem bateria no XMP)
+            if cid not in ids and self.box.indexOf(w) >= 0:
+                self.box.removeWidget(w)
                 w.deleteLater()
         n_ok = sum(1 for c in checks if c.state in ("ok", "info"))
         self.summary.setText(tr("Resultado: {} em ordem, {} pedem atenção.").replace("{}", str(n_ok), 1)
                              .replace("{}", str(len(checks) - n_ok), 1) + "  " +
                              tr("Medido às {}.").replace("{}", time.strftime("%H:%M")))
-        colors = {"ok": C["ok"], "atencao": C["warn"], "corrigir": C["bad"], "info": C["info"]}
-        for c in checks:
-            row = QWidget()
-            rl = QHBoxLayout(row)
-            rl.setContentsMargins(4, 6, 4, 6)
-            rl.setSpacing(12)
-            dot = QLabel("●")
-            dot.setStyleSheet(f"color:{colors[c.state]}; font-size:13pt;")
-            rl.addWidget(dot, 0, Qt.AlignTop)
-            col = QVBoxLayout()
-            col.setSpacing(0)
-            col.addWidget(label(c.title))
-            if c.detail:
-                col.addWidget(label(c.detail, "muted"))
-            rl.addLayout(col, 1)
-            if c.value:
-                rl.addWidget(label(c.value, wrap=False), 0, Qt.AlignTop | Qt.AlignRight)
-            if c.state in ("atencao", "corrigir") and c.fix in FIX_PAGE and self.main:
-                rl.addWidget(button("Corrigir", on_click=lambda _=False, p=FIX_PAGE[c.fix]: self.main.go(p)),
-                             0, Qt.AlignVCenter)
-            elif c.state in ("atencao", "corrigir") and c.fix == "relaunch_admin" and self.main:
-                from lolitos.core.system import relaunch_as_admin
-                rl.addWidget(button("Abrir como admin", on_click=lambda: relaunch_as_admin() and self.main.quit()))
-            self.box.addWidget(row)
 
     def _report(self) -> str:
         from lolitos.modules import pcprofile

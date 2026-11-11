@@ -17,7 +17,7 @@ $o.vram = @(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36
 $o.disks = @(Get-PhysicalDisk | ForEach-Object { [ordered]@{FriendlyName=$_.FriendlyName; MediaType=[string]$_.MediaType; BusType=[string]$_.BusType; HealthStatus=[string]$_.HealthStatus; Size=[int64]$_.Size; DeviceId=[string]$_.DeviceId} })
 $o.os = Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,@{n='Boot';e={$_.LastBootUpTime.ToString('o')}},@{n='Installed';e={$_.InstallDate.ToString('dd/MM/yyyy')}}
 try { $o.secureboot = [bool](Confirm-SecureBootUEFI) } catch { $o.secureboot = $null }
-try { $t = Get-Tpm; $o.tpm = [ordered]@{present=$t.TpmPresent;ready=$t.TpmReady} } catch { $o.tpm = $null }
+try { $t = Get-Tpm; $w = Get-CimInstance -Namespace root/cimv2/security/microsofttpm -ClassName Win32_Tpm -ErrorAction SilentlyContinue; $o.tpm = [ordered]@{present=$t.TpmPresent;ready=$t.TpmReady;version=(([string]$w.SpecVersion) -split ',')[0];maker=[string]$t.ManufacturerIdTxt;fw=[string]$t.ManufacturerVersion} } catch { $o.tpm = $null }
 try { $o.av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct | Select-Object displayName,productState } catch { $o.av = @() }
 $o.firmware = $env:firmware_type
 $o

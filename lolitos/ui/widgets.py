@@ -427,7 +427,8 @@ class Page(QWidget):
                 head.addWidget(IconTile(self.icon), 0, Qt.AlignTop)
             col = QVBoxLayout()
             col.setSpacing(2)
-            col.addWidget(label(self.title, "h1"))
+            self.title_lbl = label(self.title, "h1")
+            col.addWidget(self.title_lbl)
             if self.subtitle:
                 col.addWidget(label(self.subtitle, "muted"))
             head.addLayout(col, 1)
@@ -436,6 +437,8 @@ class Page(QWidget):
         elif self.subtitle:
             self.body.addWidget(label(self.subtitle, "muted"))
         self._built = False
+        if not self.title:
+            self.title_lbl = None
 
     def ensure_built(self):
         """Monta o conteúdo uma vez, sem desenhar pela metade."""

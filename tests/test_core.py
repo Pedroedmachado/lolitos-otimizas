@@ -847,3 +847,48 @@ def test_boost_list_and_report(monkeypatch):
     assert "━━ Cache do Windows Update" in txt and "Miniaturas apagadas" in txt and "━━ Liberar memória RAM" in txt
     assert applied and all(states[i] == "off" for i in applied)
     assert "aplicados agora" in out
+
+
+def test_startup_exe_path_and_scope():
+    from lolitos.modules import startup
+    assert startup.exe_path(r'"C:\Users\P\AppData\Local\Discord\Update.exe" --processStart Discord.exe') \
+        == r"C:\Users\P\AppData\Local\Discord\Update.exe"
+    assert startup.exe_path(r"C:\Windows\System32\foo.exe -background").endswith("foo.exe")
+    e = startup.Entry("x", "c", "Registro (todos os usuários)", "HKLM", "k", True)
+    assert startup.all_users(e)
+    e.ahive = "HKCU"
+    assert not startup.all_users(e)
+
+
+def test_checkup_reports_each_item_as_it_goes(monkeypatch):
+    from lolitos.modules import checkup
+    seen = []
+    out = checkup.run_checkup(hw={}, on_check=seen.append)
+    assert [c.id for c in seen] == [c.id for c in out]
+    planned = {cid for cid, _ in checkup.PLANNED}
+    assert {c.id for c in out} - {"hdd"} <= planned
+
+
+def test_tour_walks_all_steps():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication, QWidget
+    app = QApplication.instance() or QApplication([])
+    from lolitos.ui import tour
+
+    class FakeMain(QWidget):
+        def __init__(self):
+            super().__init__()
+            from PySide6.QtWidgets import QStackedWidget
+            self.stack = QStackedWidget(self)
+            self.index, self.nav_buttons, self.went = {}, [], []
+
+        def go(self, k):
+            self.went.append(k)
+    m = FakeMain()
+    m.resize(1200, 800)
+    closed = []
+    t = tour.start(m, lambda: closed.append(1))
+    for _ in range(len(tour.STEPS)):
+        t.show_step(t.i + 1)
+    app.processEvents()
+    assert closed == [1]

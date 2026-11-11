@@ -111,6 +111,44 @@ def boost(progress=None):
     return "\n".join(lines)
 
 
+def system_info() -> list[tuple[str, str]]:
+    """Linhas do cartão 'Informações do Sistema' do Painel (tudo lido do Windows)."""
+    import html
+    import platform
+    import socket
+
+    from lolitos.core.system import human_size
+    from lolitos.modules import hwinfo
+    d = hwinfo.read_all()
+    cpu0 = (d.get("cpu") or [{}])[0]
+    os_ = d.get("os") or {}
+    b = d.get("board") or {}
+    up = time.time() - psutil.boot_time()
+    h, m = int(up // 3600), int(up % 3600 // 60)
+    up_txt = (f"{h // 24} d {h % 24} h" if h >= 24 else f"{h} h {m} min")
+    disks = ", ".join(f"{(x.get('FriendlyName') or '').strip()} ({human_size(int(x.get('Size') or 0))}"
+                      f"{', ' + str(x.get('MediaType')) if str(x.get('MediaType')) in ('SSD', 'HDD') else ''})"
+                      for x in d.get("disks", [])[:3])
+    tpm = d.get("tpm") or {}
+    sb = d.get("secureboot")
+    rows = [
+        ("Computador", socket.gethostname()),
+        ("Sistema", f"{os_.get('Caption', '').replace('Microsoft ', '')} (build {os_.get('BuildNumber', '')})"
+         if os_ else platform.platform()),
+        ("Processador", (cpu0.get("Name") or platform.processor() or "").strip()),
+        ("Núcleos", f"{psutil.cpu_count(logical=False)} {tr('físicos')} / {psutil.cpu_count()} {tr('lógicos')}"),
+        ("Memória RAM", human_size(psutil.virtual_memory().total)),
+        ("Ligado há", up_txt),
+        ("Placa de vídeo", ", ".join((g.get("Name") or "").strip() for g in d.get("gpu", []))),
+        ("Placa-mãe", f"{b.get('Manufacturer', '')} {b.get('Product', '')}".strip()),
+        ("Discos", disks),
+        ("Secure Boot", "" if sb is None else tr("Ativado") if sb else tr("Desativado") + " (UEFI)"),
+        ("TPM", f"TPM {tpm.get('version') or '2.0'}" + (f" · {tpm['maker']}" if tpm.get("maker") else "")
+         + (f" {tpm['fw']}" if tpm.get("fw") else "") if tpm.get("ready") else ""),
+    ]
+    return [(k, html.escape(v)) for k, v in rows if v]
+
+
 def pc_analysis():
     """Perfil do PC, dicas e o que o Boost deixa de fora/inclui por causa dele."""
     pcprofile.refresh_slow()
@@ -379,7 +417,19 @@ class Dashboard(Page):
         self.act_box = QVBoxLayout()
         self.act_box.setSpacing(12)
         self.act_card.lay.addLayout(self.act_box)
-        self.body.addWidget(self.act_card)
+        self.act_card.lay.addStretch()
+        # informações do sistema, ao lado das ações
+        self.info_card = Card()
+        self.info_card.lay.addLayout(card_header("pc", "Informações do Sistema"))
+        self.info_lbl = label("Lendo o sistema…", rich=True)
+        self.info_card.lay.addWidget(self.info_lbl)
+        self.info_card.lay.addStretch()
+        pair = QHBoxLayout()
+        pair.setSpacing(14)
+        pair.addWidget(self.act_card, 3)
+        pair.addWidget(self.info_card, 2)
+        self.body.addLayout(pair)
+        run_async(system_info, on_done=self._sysinfo)
 
         # ------------------------------------------------ seu PC
         self.pc_card = Card()
@@ -512,6 +562,15 @@ class Dashboard(Page):
         self.pend_sub.setText(tr("O Windows demorou para responder. Vou tentar de novo em alguns minutos."))
         QTimer.singleShot(300_000, self.refresh)
 
+    def _sysinfo(self, rows):
+        ico = {"Computador": "▣", "Sistema": "⊞", "Processador": "▤", "Núcleos": "▦", "Memória RAM": "▥",
+               "Ligado há": "◷", "Placa de vídeo": "▧", "Placa-mãe": "▨", "Discos": "◫", "Secure Boot": "◈",
+               "TPM": "◆"}
+        self.info_lbl.setText("<table cellspacing=5>" + "".join(
+            f"<tr><td style='color:{C['accent']}'>{ico.get(k, '•')}</td>"
+            f"<td style='color:{C['muted']}; padding-right:14px'>{tr(k)}</td><td>{v}</td></tr>"
+            for k, v in rows if v) + "</table>")
+
     def _scored(self, r):
         score, pending, checks, pend_ids = r
         self.boost_btn.setEnabled(True)
@@ -530,7 +589,7 @@ class Dashboard(Page):
             self.pend_title.setStyleSheet(f"color:{C['accent2']};")
             self.pend_sub.setText(tr("{} ajuste(s) desligado(s).").replace("{}", str(pending)))
         else:
-            self.pend_title.setText(tr("PC OTIMIZADO"))
+            self.pend_title.setText(tr("SISTEMA OTIMIZADO"))
             self.pend_title.setStyleSheet(f"color:{C['ok']};")
             self.pend_sub.setText(tr("Tudo que é recomendado está ativo."))
         self._update_line()

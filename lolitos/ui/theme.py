@@ -91,6 +91,8 @@ QPushButton#nav {{ text-align: left; padding: 7px 14px; border: none; border-rad
 QPushButton#nav:hover {{ background: {c['panel2']}; color: {c['text']}; }}
 QPushButton#nav:checked {{ background: {c['deepbg']}; border: 1px solid {c['accent']};
                           border-left: 3px solid {c['accent']}; }}
+QFrame#navpill {{ border-radius: 10px; border: 1px solid {c['accent']};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(45,140,255,0.38), stop:1 rgba(45,140,255,0.10)); }}
 QPushButton#navgold {{ border: 1px solid {c['gold']}; border-radius: 4px; background: transparent; }}
 QPushButton#navgold:hover, QPushButton#navgold:checked {{ background: rgba(245,184,46,0.10); }}
 QPushButton#update {{ text-align: left; padding: 8px 12px; border: 1px solid {c['border']}; border-radius: 10px;
@@ -147,6 +149,18 @@ QLabel#pill {{ color: {c['accent2']}; border: 1px solid {c['border2']}; border-r
 QLabel#bigtitle {{ color: {c['accent']}; font-size: 22pt; font-weight: 900; letter-spacing: 0.5px; }}
 QLabel#h2 {{ font-size: 12.5pt; font-weight: 700; }}
 QLabel#muted {{ color: {c['muted']}; }}
+QFrame#tourbubble {{ background: {c['panel']}; border: 1px solid {c['accent']}; border-radius: 14px; }}
+QLabel#tourstep {{ color: {c['accent2']}; font-size: 8.5pt; font-weight: 800; letter-spacing: 0.5px; }}
+QLabel#tourdots {{ color: {c['accent']}; font-size: 8pt; letter-spacing: 2px; }}
+QFrame#setrow {{ background: transparent; border: none; border-top: 1px solid {c['border']}; }}
+QLabel#seticon {{ background: {c['deepbg']}; border: 1px solid {c['border2']}; border-radius: 9px; color: {c['accent2']};
+    font-size: 13pt; }}
+QPushButton#seg {{ border-radius: 0; padding: 6px 16px; background: {c['panel2']}; }}
+QPushButton#seg:checked {{ background: {c['accent']}; color: white; border-color: {c['accent']}; font-weight: 700; }}
+QLabel#small {{ color: {c['muted']}; font-size: 8.5pt; }}
+QLabel#counter {{ color: {c['muted']}; font-weight: 600; padding-right: 6px; }}
+QFrame#listrow {{ background: transparent; border: none; border-bottom: 1px solid {c['border']}; }}
+QFrame#listrow:hover {{ background: {c['panel2']}; }}
 QLabel#big {{ font-size: 34pt; font-weight: 800; color: {c['accent2']}; }}
 QFrame#card {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 12px; }}
 QFrame#card:hover {{ border-color: {c['border2']}; }}

@@ -196,7 +196,9 @@ class MainWindow(QMainWindow):
         self._upd_timer.timeout.connect(lambda: settings.get("check_updates", True)
                                         and self.check_update(manual=False))
         self._upd_timer.start()
-        if not settings.get("seen_analysis"):
+        if not settings.get("seen_tour"):
+            QTimer.singleShot(700, lambda: self.show_tour(then_analysis=not settings.get("seen_analysis")))
+        elif not settings.get("seen_analysis"):
             QTimer.singleShot(900, self.first_run)
 
     # ---------------------------------------------------------------- barra lateral
@@ -272,12 +274,19 @@ class MainWindow(QMainWindow):
         page = self.stack.widget(i)
         if hasattr(page, "ensure_built"):
             page.ensure_built()
-        changed = self.stack.currentIndex() != i
+        prev_i = self.stack.currentIndex()
+        changed = prev_i != i
+        fx_on = changed and self.isVisible() and theme.effects()
+        if fx_on:
+            from lolitos.ui.anim import blur_out
+            blur_out(self.stack, self.stack.currentWidget())     # a tela que sai desfoca por cima da nova
         self.stack.setCurrentIndex(i)
         self.group.button(i).setChecked(True)
-        if changed and self.isVisible():
-            from lolitos.ui.anim import fade_in
+        if fx_on:
+            from lolitos.ui.anim import fade_in, type_text
             fade_in(page)
+            type_text(getattr(page, "title_lbl", None))
+            self._slide_nav(self.group.button(prev_i), self.group.button(i))
         if bring:
             if self.isMinimized():
                 self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
@@ -285,6 +294,22 @@ class MainWindow(QMainWindow):
                 self.show()
             self.raise_()
             self.activateWindow()
+
+    def _slide_nav(self, old, new):
+        """Um destaque desliza do item antigo do menu até o novo."""
+        if old is None or new is None or not old.isVisible() or not new.isVisible():
+            return
+        pill = getattr(self, "nav_pill", None)
+        if pill is None:
+            pill = QFrame(new.parentWidget())
+            pill.setObjectName("navpill")
+            pill.setAttribute(Qt.WA_TransparentForMouseEvents)
+            self.nav_pill = pill
+        from lolitos.ui.anim import slide_rect
+        pill.setGeometry(old.geometry())
+        pill.show()
+        pill.raise_()
+        slide_rect(pill, old.geometry(), new.geometry(), 280 if theme.level() >= 2 else 200, pill.hide)
 
     def prebuild_pages(self):
         """Monta as outras telas aos poucos, com o app parado, para a primeira visita ser instantânea."""
@@ -425,6 +450,18 @@ class MainWindow(QMainWindow):
         dlg.exec()
         if dlg.result_value is None:
             info(self, "Atualização", "A atualização não foi concluída. Tente de novo mais tarde.")
+
+    def show_tour(self, then_analysis: bool = False):
+        """Apresentação do app (primeira abertura e Configurações › Rever a apresentação)."""
+        from lolitos.ui import tour
+        if getattr(self, "_tour", None):
+            return
+
+        def closed():
+            self._tour = None
+            if then_analysis:
+                QTimer.singleShot(300, self.first_run)
+        self._tour = tour.start(self, closed)
 
     def first_run(self):
         """Na primeira abertura: mostra a análise do PC e oferece o recomendado para ELE."""

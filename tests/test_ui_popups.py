@@ -21,7 +21,7 @@ def test_no_loose_windows(monkeypatch, tmp_path):
     monkeypatch.setattr(widgets, "confirm", lambda *a, **k: False)
     monkeypatch.setattr(widgets, "info", lambda *a, **k: None)
     real_get = settings.get
-    monkeypatch.setattr(settings, "get", lambda k, d=None: {"seen_analysis": True, "check_updates": False}.get(
+    monkeypatch.setattr(settings, "get", lambda k, d=None: {"seen_analysis": True, "seen_tour": True, "check_updates": False}.get(
         k, real_get(k, d) if d is not None else real_get(k)))
     G = games.Game
     monkeypatch.setattr(games, "all_games", lambda *a, **k: [G("steam:1", "Jogo A", "steam", "C:/x", "x"),

@@ -48,6 +48,26 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.5.0
+
+* **Troca de tela com efeitos:** a tela anterior se desfoca enquanto some e o título da nova é digitado. No menu, o
+  destaque desliza do item antigo até o novo.
+* **Desempenho refeito:** um gráfico por componente (processador, memória, placa de vídeo, disco e rede), cada um com
+  a sua cor. Embaixo de cada um aparecem os detalhes: modelo, núcleos, clock, temperatura, pentes, VRAM, leitura e
+  escrita. A rede mostra o upload numa linha cinza.
+* **Painel com Informações do Sistema:** um cartão novo mostra o computador, o Windows, o processador e os núcleos,
+  a memória, há quanto tempo o PC está ligado, a placa de vídeo, a placa-mãe, os discos, o Secure Boot e o TPM.
+* **Inicialização em lista:** cada programa aparece com o ícone, o caminho, para quem vale ("Usuário" ou "Todos os
+  usuários") e uma chave liga/desliga. No topo ficam a contagem de ativos e desativados e o botão Atualizar.
+* **Configurações reorganizadas** em seções: Aparência, Inicialização, Atualizações, Segurança, Preparar e jogar,
+  Dados do aplicativo e Sobre.
+  * O tema se troca com botões (Escuro, Claro, Azul).
+  * A seção Atualizações mostra a versão instalada e tem o botão "Procurar agora".
+* **Apresentação do app:** na primeira abertura, uma volta guiada destaca o menu, a pontuação, o Boost e as telas
+  principais. Para rever, use Configurações › Aparência.
+* **Check-up ao vivo:** todos os itens aparecem como "Medindo…" e se preenchem um a um. As consultas lentas do
+  Windows começam em paralelo, sem segurar as rápidas.
+
 ## Novidades da 2.4.3
 
 * **Boost igual ao do app de referência:**

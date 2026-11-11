@@ -54,7 +54,46 @@ def _days(n: float) -> str:
     return f"{n:.1f} dias".replace(".", ",") if n < 10 else f"{n:.0f} dias"
 
 
-def run_checkup(hw: dict | None = None) -> list[Check]:
+# o que a tela mostra como "Medindo…" antes do resultado chegar (ids na ordem em que são medidos)
+PLANNED = [("admin", "Rodando como administrador"), ("disk_free", "Espaço livre"),
+           ("temp", "Arquivos temporários"), ("recycle", "Lixeira"), ("windows_old", "Windows.old"),
+           ("reboot", "Reinicialização pendente"), ("mem", "Memória em uso"), ("ram_amount", "Quantidade de RAM"),
+           ("xmp", "Memória na velocidade máxima"), ("dual", "Dual channel"), ("uptime", "Tempo ligado"),
+           ("restore", "Último ponto de restauração"), ("av", "Antivírus"), ("firewall", "Firewall"),
+           ("uac", "Controle de Conta de Usuário (UAC)"), ("secureboot", "Secure Boot"),
+           ("tpm", "TPM (chip de segurança)"), ("win11", "Plataforma para Windows 11"),
+           ("activation", "Ativação do Windows"), ("internet", "Internet"),
+           ("startup", "Programas na inicialização"), ("disk_health", "Saúde dos discos"),
+           ("devices", "Dispositivos com problema"), ("refresh", "Monitor na taxa máxima"),
+           ("kernel41", "Desligamentos inesperados"), ("crashes", "Falhas de programas"), ("battery", "Bateria")]
+
+
+class _Later:
+    """Começa a medir já (em outra thread) e só espera quando o valor é usado."""
+
+    def __init__(self, fn):
+        import threading
+        self._v, self._fn = None, fn
+        self._t = threading.Thread(target=self._go, daemon=True)
+        self._t.start()
+
+    def _go(self):
+        try:
+            self._v = self._fn()
+        except Exception:  # noqa: BLE001
+            self._v = None
+
+    def get(self, key, default=None):
+        self._t.join()
+        return (self._v or {}).get(key, default)
+
+    def __contains__(self, key):
+        self._t.join()
+        return key in (self._v or {})
+
+
+def run_checkup(hw: dict | None = None, on_check=None) -> list[Check]:
+    """on_check(check) é chamado a cada item medido (a tela vai preenchendo em vez de esperar tudo)."""
     import os
 
     import psutil
@@ -62,9 +101,16 @@ def run_checkup(hw: dict | None = None) -> list[Check]:
     from lolitos.core.system import human_size
     from lolitos.modules import cleanup, display, hwinfo, netdiag, startup
     out: list[Check] = []
-    add = out.append
-    facts = powershell_json(_WIN_FACTS, timeout=90) or {}
-    hw = hw or hwinfo.read_all()
+
+    def add(c: Check):
+        out.append(c)
+        if on_check:
+            try:
+                on_check(c)
+            except Exception:  # noqa: BLE001
+                pass
+    facts = _Later(lambda: powershell_json(_WIN_FACTS, timeout=90))
+    hw = hw if hw is not None else _Later(hwinfo.read_all)
 
     add(Check("admin", "Rodando como administrador", OK if is_admin() else BAD,
               "" if is_admin() else "Sem admin: ajustes, reparos e limpeza vão falhar.",
