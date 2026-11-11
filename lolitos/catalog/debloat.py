@@ -58,14 +58,42 @@ for pkg, name, warn in APPS:
               "debloat", [Appx(pkg)], ADVANCED if warn else RECOMMENDED, loss=warn)
     DEBLOAT_TWEAKS.append(t)
 
+# Desinstalador do próprio OneDrive (o winget muitas vezes não acha a instalação por usuário).
+_OD_FIND = (
+    "$c=@(); foreach($g in @(\"$env:LOCALAPPDATA\\Microsoft\\OneDrive\\*\\OneDriveSetup.exe\","
+    "\"$env:ProgramFiles\\Microsoft OneDrive\\*\\OneDriveSetup.exe\","
+    "\"${env:ProgramFiles(x86)}\\Microsoft OneDrive\\*\\OneDriveSetup.exe\","
+    "\"$env:SystemRoot\\System32\\OneDriveSetup.exe\",\"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\")){"
+    " $c += @(Get-ChildItem $g -ErrorAction SilentlyContinue) };"
+    "$exe = $c | Sort-Object LastWriteTime -Descending | Select-Object -First 1;")
+_OD_PATHS = ("@(\"$env:LOCALAPPDATA\\Microsoft\\OneDrive\\OneDrive.exe\","
+             "\"$env:ProgramFiles\\Microsoft OneDrive\\OneDrive.exe\","
+             "\"${env:ProgramFiles(x86)}\\Microsoft OneDrive\\OneDrive.exe\")")
+ONEDRIVE_UNINSTALL = (
+    "Get-Process OneDrive -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue;"
+    + _OD_FIND +
+    "if($exe){ $a='/uninstall'; if($exe.FullName -like \"$env:ProgramFiles*\"){ $a='/uninstall /allusers' };"
+    " Start-Process -FilePath $exe.FullName -ArgumentList $a -Wait -WindowStyle Hidden }"
+    " elseif(Get-Command winget -ErrorAction SilentlyContinue){ winget uninstall --id Microsoft.OneDrive -e --silent"
+    " --accept-source-agreements | Out-Null };"
+    "Start-Sleep -Seconds 2;"
+    "$left = " + _OD_PATHS + " | Where-Object { Test-Path $_ };"
+    "if($left){ throw ('o desinstalador do OneDrive terminou, mas ele continua em ' + ($left -join ', ') +"
+    " '. Feche o OneDrive na bandeja e tente de novo.') }")
+ONEDRIVE_INSTALL = (
+    "$s=\"$env:SystemRoot\\System32\\OneDriveSetup.exe\"; if(-not (Test-Path $s)){ $s=\"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\" };"
+    "if(Test-Path $s){ Start-Process -FilePath $s -Wait -WindowStyle Hidden }"
+    " elseif(Get-Command winget -ErrorAction SilentlyContinue){ winget install --id Microsoft.OneDrive -e --silent"
+    " --accept-package-agreements --accept-source-agreements | Out-Null }"
+    " else { throw 'baixe o OneDrive em onedrive.com/download' }")
+
 ONEDRIVE = Tweak(
     "onedrive_remove", "Remover o OneDrive",
-    "Desinstala o OneDrive. Arquivos já baixados continuam na sua pasta; os da nuvem continuam na conta.",
+    "Desinstala o OneDrive pelo desinstalador dele mesmo. Arquivos já baixados continuam na sua pasta; os da nuvem "
+    "continuam na conta.",
     "debloat",
-    [Cmd("taskkill /f /im OneDrive.exe >nul 2>&1 & winget uninstall --id Microsoft.OneDrive -e --silent "
-         "--accept-source-agreements",
-         "winget install --id Microsoft.OneDrive -e --silent --accept-package-agreements --accept-source-agreements",
-         check=lambda: not _onedrive_installed(), label="desinstalar OneDrive")],
+    [Cmd(ONEDRIVE_UNINSTALL, ONEDRIVE_INSTALL, ps=True, check=lambda: not _onedrive_installed(),
+         label="desinstalar OneDrive", timeout=600)],
     ADVANCED, loss="Ruim se você usa o OneDrive para backup ou sincronizar arquivos.")
 
 register(*DEBLOAT_TWEAKS, ONEDRIVE)

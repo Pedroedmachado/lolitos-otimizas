@@ -48,6 +48,18 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.4.1
+
+* **Debloat avançado corrigido:**
+  * Os itens *Remover …* de recursos do Windows (Gravador de Passos, Matemática, escrita à mão, Hello facial, fala,
+    vozes, WordPad, Fax e Scanner, sincronização de contas) agora conferem o estado de verdade. Depois de removidos
+    aparecem como ativos, e os que não existem na sua versão do Windows aparecem como *não se aplica*.
+  * Se o Windows recusar a remoção, o motivo aparece na tela.
+  * O *Desfazer* reinstala só o que foi removido, e não os pacotes de todos os idiomas.
+  * *Remover o OneDrive* usa o desinstalador do próprio OneDrive (o winget muitas vezes não achava a instalação) e
+    confere no fim se ele saiu mesmo.
+  * *Liberar o armazenamento reservado* explica o erro quando há atualização em andamento.
+
 ## Novidades da 2.4.0
 
 * **Debloat refeito numa tela só:**

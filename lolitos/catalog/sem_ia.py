@@ -85,6 +85,6 @@ CAPABILITY_TWEAKS = []
 for pat, label, warn in CAPABILITIES:
     tid = "cap_" + pat.split("*")[0].lower().replace(".", "_")
     t = Tweak(tid, f"Remover {label}", f"Recurso opcional do Windows ({pat}). Desfazer reinstala pela internet.",
-              "debloat", [Capability(pat, label)], ADVANCED, loss=warn)
+              "debloat", [Capability(pat, label)], ADVANCED, loss=warn, restart=True)
     CAPABILITY_TWEAKS.append(t)
 register(*CAPABILITY_TWEAKS)

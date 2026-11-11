@@ -471,8 +471,46 @@ class Appx(Action):
         _check(powershell(script, timeout=300), self.describe())
 
 
+class _CapCache:
+    """Estado de todos os recursos opcionais (Get-WindowsCapability). Uma leitura só, compartilhada: a consulta é
+    lenta (10 a 60 s) e a lista do Debloat pede o estado de vários itens ao mesmo tempo."""
+    ttl = 300.0
+
+    def __init__(self):
+        import threading
+        self.t = 0.0
+        self.data: dict[str, str] = {}
+        self.lock = threading.Lock()
+
+    def get(self) -> dict[str, str]:
+        if not IS_WIN:
+            return self.data
+        with self.lock:
+            if time.time() - self.t > self.ttl:
+                rows = powershell_json("Get-WindowsCapability -Online | Select-Object Name,"
+                                       "@{n='State';e={[string]$_.State}}", timeout=240)
+                if rows is not None:
+                    self.data = {r["Name"]: r.get("State") or "" for r in as_list(rows) if r and r.get("Name")}
+                    self.t = time.time()
+            return self.data
+
+    def invalidate(self):
+        self.t = 0.0
+
+
+CAPS = _CapCache()
+# estados em que o recurso ainda está no PC (UninstallPending conta como removido: some ao reiniciar)
+CAP_PRESENT = ("installed", "installpending", "partiallyinstalled")
+
+
+def cap_matches(caps: dict[str, str], pattern: str) -> dict[str, str]:
+    import fnmatch
+    return {n: st for n, st in caps.items() if fnmatch.fnmatchcase(n.lower(), pattern.lower())}
+
+
 class Capability(Action):
-    """Recurso opcional do Windows (Get-WindowsCapability). Desfazer reinstala pela internet."""
+    """Recurso opcional do Windows (Get-WindowsCapability). Remove só o que está instalado e, no Desfazer,
+    reinstala pela internet exatamente o que foi removido (não todos os idiomas do mesmo recurso)."""
 
     def __init__(self, pattern: str, label: str = ""):
         self.pattern, self.label = pattern, label
@@ -480,15 +518,50 @@ class Capability(Action):
     def describe(self):
         return f"remover recurso {self.label or self.pattern}"
 
+    def _mine(self) -> dict[str, str]:
+        return cap_matches(CAPS.get(), self.pattern)
+
+    def applicable(self):
+        return not IS_WIN or bool(self._mine())
+
+    def is_applied(self):
+        m = self._mine()
+        if not m:
+            return None
+        return not any(st.lower() in CAP_PRESENT for st in m.values())
+
+    def capture(self):
+        return {"removed": sorted(n for n, st in self._mine().items() if st.lower() == "installed")}
+
     def apply(self):
-        s = (f"Get-WindowsCapability -Online | Where-Object {{ $_.Name -like '{self.pattern}' -and "
-             f"$_.State -eq 'Installed' }} | Remove-WindowsCapability -Online | Out-Null")
-        _check(powershell(s, timeout=900), self.describe())
+        names = [n for n, st in self._mine().items() if st.lower() == "installed"]
+        if not names:
+            return
+        lst = ",".join("'" + n.replace("'", "''") + "'" for n in names)
+        script = ("$bad=@(); foreach($n in @(" + lst + ")){ try { Remove-WindowsCapability -Online -Name $n "
+                  "-ErrorAction Stop | Out-Null } catch { $bad += ($n + ': ' + $_.Exception.Message) } };"
+                  "if($bad.Count){ Write-Output ($bad -join ' | '); exit 1 }")
+        r = powershell(script, timeout=1200)
+        CAPS.invalidate()
+        if not r.ok:
+            txt = (r.out or r.err or "").strip()
+            if "0x800f0825" in txt.lower() or "permanent" in txt.lower() or "permanente" in txt.lower():
+                raise ActionError(f"{self.describe()}: o Windows marca este recurso como parte fixa do idioma "
+                                  "instalado e não deixa remover.")
+            _check(r, self.describe())
 
     def revert(self, snap):
-        s = (f"Get-WindowsCapability -Online | Where-Object {{ $_.Name -like '{self.pattern}' }} |"
-             " Add-WindowsCapability -Online | Out-Null")
-        _check(powershell(s, timeout=1800), "reinstalar " + (self.label or self.pattern))
+        if "removed" in snap:
+            names = snap["removed"] or []
+        else:                       # registro de versões antigas (antes da 2.4.1): volta o que foi tirado
+            names = [n for n, st in self._mine().items() if st.lower() not in CAP_PRESENT]
+        if not names:
+            return
+        lst = ",".join("'" + n.replace("'", "''") + "'" for n in names)
+        r = powershell("foreach($n in @(" + lst + ")){ Add-WindowsCapability -Online -Name $n | Out-Null }",
+                       timeout=1800)
+        CAPS.invalidate()
+        _check(r, "reinstalar " + (self.label or self.pattern))
 
 
 class JsonKey(Action):

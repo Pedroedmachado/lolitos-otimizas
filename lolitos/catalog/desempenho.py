@@ -122,7 +122,11 @@ register(
                "exigem esta proteção ligada — desfaça se algum reclamar."),
     Tweak("reserved_storage_off", "Liberar o armazenamento reservado",
           "Devolve os GB que o Windows guarda para atualizações.",
-          "desempenho", [Cmd("Set-WindowsReservedStorageState -State Disabled", "Set-WindowsReservedStorageState -State Enabled",
+          "desempenho", [Cmd("try { Set-WindowsReservedStorageState -State Disabled } catch { if($_.Exception.Message -match "
+                                 "'in use|em uso|servicing|manuten'){ throw 'o Windows está usando o armazenamento "
+                                 "reservado agora (atualização em andamento). Termine as atualizações, reinicie e "
+                                 "tente de novo.' } else { throw } }",
+                                 "Set-WindowsReservedStorageState -State Enabled",
                              ps=True, ps_check="if((Get-WindowsReservedStorageState).ReservedStorageState -eq 'Disabled'){'1'}else{'0'}",
                              label="armazenamento reservado")],
           ADVANCED, loss="Atualizações grandes podem falhar com o disco quase cheio."),

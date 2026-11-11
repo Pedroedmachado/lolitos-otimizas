@@ -742,3 +742,36 @@ def test_fx_levels(monkeypatch):
     theme.use("blue", 0)
     assert not theme.effects() and "qradialgradient" not in theme.qss()
     theme.use("blue", 2)
+
+
+def test_capability_state_and_undo(monkeypatch):
+    from lolitos.core import actions
+    caps = {"Language.Speech~~~pt-BR~0.0.1.0": "Installed", "Language.Speech~~~en-US~0.0.1.0": "NotPresent",
+            "MathRecognizer~~~~0.0.1.0": "UninstallPending", "Hello.Face.20134~~~~0.0.1.0": "Installed"}
+    monkeypatch.setattr(actions, "IS_WIN", True)
+    monkeypatch.setattr(actions.CAPS, "get", lambda: caps)
+    sp, mr, wp = (actions.Capability(p) for p in ("Language.Speech*", "MathRecognizer*", "Microsoft.Windows.WordPad*"))
+    assert sp.applicable() and sp.is_applied() is False
+    assert mr.is_applied() is True                         # sai ao reiniciar: conta como removido
+    assert not wp.applicable()                             # não existe neste Windows: 'não se aplica'
+    assert sp.capture() == {"removed": ["Language.Speech~~~pt-BR~0.0.1.0"]}
+    ran = []
+
+    class R:
+        ok, out, err, code = True, "", "", 0
+    monkeypatch.setattr(actions, "powershell", lambda s, timeout=0: ran.append(s) or R())
+    sp.apply()
+    assert "pt-BR" in ran[-1] and "en-US" not in ran[-1]   # só remove o que está instalado
+    sp.revert({"removed": ["Language.Speech~~~pt-BR~0.0.1.0"]})
+    assert "Add-WindowsCapability" in ran[-1] and "en-US" not in ran[-1]   # desfazer não instala outros idiomas
+    R.ok, R.out = False, "Language.Speech~~~pt-BR~0.0.1.0: Error 0x800f0825"
+    import pytest
+    with pytest.raises(actions.ActionError, match="parte fixa"):
+        sp.apply()
+
+
+def test_onedrive_scripts_balanced():
+    from lolitos.catalog.debloat import ONEDRIVE_INSTALL, ONEDRIVE_UNINSTALL
+    for s in (ONEDRIVE_UNINSTALL, ONEDRIVE_INSTALL):
+        assert s.count("{") == s.count("}") and s.count("(") == s.count(")") and s.count('"') % 2 == 0
+    assert "/uninstall" in ONEDRIVE_UNINSTALL and "throw" in ONEDRIVE_UNINSTALL

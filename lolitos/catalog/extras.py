@@ -205,7 +205,7 @@ register(
     # ============================================================ recursos opcionais
     Tweak("cap_onesync", "Remover a sincronização de Email, Calendário e Pessoas",
           "Componente que sincroniza contas dos apps antigos de Email e Calendário.",
-          "debloat", [Capability("OneCoreUAP.OneSync*", "sincronização de contas")], ADVANCED,
+          "debloat", [Capability("OneCoreUAP.OneSync*", "sincronização de contas")], ADVANCED, restart=True,
           loss="Os apps antigos de Email e Calendário param de sincronizar. Outlook e navegador não mudam."),
     Tweak("rdp_client_remove", "Remover a Conexão de Área de Trabalho Remota",
           "Desinstala o mstsc, usado para controlar outro PC pela Área de Trabalho Remota.",

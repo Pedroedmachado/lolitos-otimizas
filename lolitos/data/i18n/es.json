@@ -2928,5 +2928,7 @@
 "base de 100 MHz": "base de 100 MHz",
 "0 RPM (parada)": "0 RPM (parado)",
 "do limite": "del límite",
-"Básicos: vidro, telas esmaecendo, chaves deslizando e brilho nos botões. Completos: também onda ao clicar, reflexo nos botões principais, luz que segue o mouse, cartões que levantam e telas que entram deslizando. Em PC fraco, use Desligados.": "Básicos: vidrio, pantallas que se desvanecen, interruptores que se deslizan y brillo en los botones. Completos: también onda al hacer clic, reflejo en los botones principales, luz que sigue al ratón, tarjetas que se elevan y pantallas que entran deslizándose. En un PC débil, usa Desactivados."
+"Básicos: vidro, telas esmaecendo, chaves deslizando e brilho nos botões. Completos: também onda ao clicar, reflexo nos botões principais, luz que segue o mouse, cartões que levantam e telas que entram deslizando. Em PC fraco, use Desligados.": "Básicos: vidrio, pantallas que se desvanecen, interruptores que se deslizan y brillo en los botones. Completos: también onda al hacer clic, reflejo en los botones principales, luz que sigue al ratón, tarjetas que se elevan y pantallas que entran deslizándose. En un PC débil, usa Desactivados.",
+"Desinstala o OneDrive pelo desinstalador dele mesmo. Arquivos já baixados continuam na sua pasta; os da nuvem continuam na conta.": "Desinstala OneDrive con su propio desinstalador. Los archivos ya descargados siguen en tu carpeta; los de la nube siguen en la cuenta.",
+"{}: o Windows marca este recurso como parte fixa do idioma instalado e não deixa remover.": "{}: Windows marca este componente como parte fija del idioma instalado y no deja quitarlo."
 }
