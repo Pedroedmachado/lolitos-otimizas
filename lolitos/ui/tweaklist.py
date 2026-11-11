@@ -1,12 +1,93 @@
 """Lista de ajustes com estado ao vivo, aplicar/desfazer individual e em lote."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
 from lolitos.core import engine, history, restore, settings
 from lolitos.core.tweaks import ADVANCED
 from lolitos.ui.theme import C
-from lolitos.ui.widgets import TaskDialog, TweakRow, button, confirm, hrow, info, label, run_async, status_pool
+from lolitos.i18n import tr
+from lolitos.ui.widgets import (Badge, TaskDialog, TweakRow, button, confirm, hrow, info, label, run_async,
+                                status_pool)
+
+# larguras das colunas da tabela (marcar, nível, ajuste, o que faz, estado, ação); 0 = estica
+COLS = [(26, 0), (112, 0), (0, 2), (0, 3), (118, 0), (104, 0)]
+LEVEL_TXT = {"essencial": ("ESSENCIAL", "ok"), "recomendado": ("RECOMENDADO", "info"), "avancado": ("AVANÇADO", "warn")}
+
+
+def _cell(h: QHBoxLayout, w, col: int, align=Qt.AlignVCenter):
+    fixed, stretch = COLS[col]
+    if fixed:
+        w.setFixedWidth(fixed)
+    h.addWidget(w, stretch, align)
+
+
+def table_header() -> QFrame:
+    f = QFrame()
+    f.setObjectName("tablehead")
+    h = QHBoxLayout(f)
+    h.setContentsMargins(10, 6, 10, 6)
+    h.setSpacing(12)
+    for i, txt in enumerate(["", "Nível", "Ajuste", "O que faz", "Estado", "Desfazer"]):
+        lb = QLabel(tr(txt))
+        lb.setObjectName("th")
+        _cell(h, lb, i)
+    return f
+
+
+class TweakTableRow(QFrame):
+    """Uma linha da tabela: marcar | nível | ajuste | o que faz (e o que se perde) | estado | aplicar/desfazer.
+    Mesma interface do TweakRow (t, chk, badge, btn, state, set_state)."""
+
+    def __init__(self, tweak, on_toggle, selectable: bool = True):
+        super().__init__()
+        from lolitos.ui.theme import C as _C
+        self.t = tweak
+        self.setObjectName("listrow")
+        h = QHBoxLayout(self)
+        h.setContentsMargins(10, 9, 10, 9)
+        h.setSpacing(12)
+        self.chk = QCheckBox(self)
+        self.chk.setCursor(Qt.PointingHandCursor)
+        self.chk.setVisible(selectable)
+        _cell(h, self.chk, 0, Qt.AlignTop)
+        txt, color = LEVEL_TXT.get(tweak.level, ("AVANÇADO", "warn"))
+        lv = QLabel(tr(txt))
+        lv.setAlignment(Qt.AlignCenter)
+        col = _C.get(color, _C["muted"])
+        lv.setStyleSheet(f"color:{col}; border:1px solid {col}; border-radius:6px; padding:2px 4px; "
+                         "font-size:7.5pt; font-weight:800;")
+        _cell(h, lv, 1, Qt.AlignTop)
+        tags = []
+        if tweak.restart:
+            tags.append(tr("reinicie para valer"))
+        if not tweak.reversible:
+            tags.append(f"<span style='color:{_C['bad']}'>{tr('sem desfazer')}</span>")
+        title = label(f"<b>{tr(tweak.title)}</b>" + (f"<br><span style='color:{_C['muted']}; font-size:8pt'>"
+                                                     f"{' · '.join(tags)}</span>" if tags else ""), rich=True)
+        _cell(h, title, 2, Qt.AlignTop)
+        what = f"<span style='color:{_C['muted']}'>{tr(tweak.desc)}</span>"
+        if tweak.loss and (tweak.level == ADVANCED or not tweak.reversible):
+            what += f"<br><span style='color:{_C['warn']}'>− {tr(tweak.loss)}</span>"
+        desc = label(what, rich=True)
+        tip = []
+        if tweak.gain:
+            tip.append("+ " + tr(tweak.gain))
+        if tweak.loss:
+            tip.append("− " + tr(tweak.loss))
+        if tip:
+            desc.setToolTip("\n".join(tip))
+        _cell(h, desc, 3, Qt.AlignTop)
+        self.badge = Badge("loading")
+        self.badge.setMinimumWidth(0)
+        _cell(h, self.badge, 4, Qt.AlignTop)
+        self.btn = button("Aplicar", on_click=lambda: on_toggle(self))
+        _cell(h, self.btn, 5, Qt.AlignTop)
+        self.state = "loading"
+
+    def set_state(self, st: str, blocked: bool = False):
+        TweakRow.set_state(self, st, blocked)
 
 
 def statuses(tweaks):
@@ -46,7 +127,7 @@ def confirm_advanced(parent, t) -> bool:
 
 class TweakList(QWidget):
     def __init__(self, tweaks, parent_page, search: bool = True, bulk: bool = True, bar: bool = True,
-                 on_selection=None, on_states=None):
+                 on_selection=None, on_states=None, table: bool = False):
         super().__init__()
         self.page = parent_page
         self.tweaks = tweaks
@@ -70,8 +151,12 @@ class TweakList(QWidget):
             lay.addLayout(hrow(*bar, stretch_first=True) if search else hrow(*bar, None))
         self.summary = label("", "muted")
         lay.addWidget(self.summary)
+        if table:
+            lay.setSpacing(0)
+            self.summary.setVisible(False)
+            lay.addWidget(table_header())
         for t in tweaks:
-            r = TweakRow(t, self._toggle, selectable=bulk)
+            r = (TweakTableRow if table else TweakRow)(t, self._toggle, selectable=bulk)
             r.chk.toggled.connect(lambda _=False: self.on_selection())
             self.rows[t.id] = r
             lay.addWidget(r)

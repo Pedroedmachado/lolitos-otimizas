@@ -3024,5 +3024,13 @@
 "Voltar": "Atrás",
 "Próximo": "Siguiente",
 "Concluir": "Terminar",
-"Passo {} de {}": "Paso {} de {}"
+"Passo {} de {}": "Paso {} de {}",
+"ESSENCIAL": "ESENCIAL",
+"RECOMENDADO": "RECOMENDADO",
+"Nível": "Nivel",
+"Ajuste": "Ajuste",
+"O que faz": "Qué hace",
+"Estado": "Estado",
+"reinicie para valer": "reinicia para que valga",
+"sem desfazer": "sin deshacer"
 }

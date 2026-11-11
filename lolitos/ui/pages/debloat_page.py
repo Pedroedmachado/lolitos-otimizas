@@ -73,7 +73,7 @@ class DebloatPage(Page):
         c1.lay.addWidget(label("Seguro em qualquer PC. O Recomendado deixa o PC mais leve, mas avisa em amarelo o "
                                "que se perde. Os dois vêm marcados quando ainda não estão aplicados.", "muted"))
         self.ess = TweakList(ess, self, search=False, bar=False, on_selection=self._count,
-                             on_states=self._first_mark)
+                             on_states=self._first_mark, table=True)
         c1.lay.addWidget(self.ess)
         self.body.addWidget(c1)
 
@@ -84,7 +84,7 @@ class DebloatPage(Page):
         c2.lay.addWidget(label("Mais leveza com contrapartidas visíveis. Ao marcar um item, o app mostra os prós e "
                                "contras e pede confirmação. Nenhum vem marcado.", "muted"))
         self.adv = TweakList(adv, self, search=False, bar=False, on_selection=self._count,
-                             on_states=self._adv_label)
+                             on_states=self._adv_label, table=True)
         c2.lay.addWidget(self.adv)
         self.body.addWidget(c2)
 

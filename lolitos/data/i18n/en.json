@@ -3024,5 +3024,13 @@
 "Voltar": "Back",
 "Próximo": "Next",
 "Concluir": "Finish",
-"Passo {} de {}": "Step {} of {}"
+"Passo {} de {}": "Step {} of {}",
+"ESSENCIAL": "ESSENTIAL",
+"RECOMENDADO": "RECOMMENDED",
+"Nível": "Level",
+"Ajuste": "Tweak",
+"O que faz": "What it does",
+"Estado": "Status",
+"reinicie para valer": "restart to take effect",
+"sem desfazer": "no undo"
 }

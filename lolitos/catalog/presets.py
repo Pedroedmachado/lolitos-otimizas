@@ -36,14 +36,25 @@ BOOST = [
     "mouse_no_delay", "explorer_cloud_off", "diag_collector_manual", "pca_off", "edge_clean",
     "office_telemetry_off", "experiments_off", "wu_no_reboot", "remote_assist_off",
 ]
+# Black Desert: entram no fim do Boost. Sem o jogo instalado, ficam de fora sozinhos (estado "não se aplica").
+BOOST_BDO = ["bdo_priority", "bdo_gpu_high", "bdo_postfilter_xml", "bdo_nvidia_profile"]
 # Limpeza que o Boost faz depois dos ajustes (alvos de lolitos.modules.cleanup)
 BOOST_CLEAN = ["user_temp", "win_temp", "wu_cache", "delivery", "wer", "thumbs"]
 
 
+def bdo_here() -> bool:
+    """Black Desert neste PC (pasta do jogo ou GameOption.txt nos Documentos)."""
+    try:
+        from lolitos.bdo import game, gameoption
+        return bool(game.install_dir() or gameoption.find_gameoption())
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def boost_ids() -> list[str]:
-    """O que o 'Boost agora' aplica neste PC: a lista BOOST menos o que não se aplica aqui."""
+    """O que o 'Boost agora' aplica neste PC: a lista BOOST e a do Black Desert, menos o que não se aplica aqui."""
     out = []
-    for i in BOOST:
+    for i in BOOST + (BOOST_BDO if bdo_here() else []):
         t = CATALOG.get(i)
         if t is not None and (t.when() if t.when else True):
             out.append(i)

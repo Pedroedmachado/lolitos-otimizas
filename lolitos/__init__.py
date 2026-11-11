@@ -5,6 +5,6 @@ APP_ID = "ChineseControl"              # nome de pasta/arquivos/tarefa (sem espa
 # nomes antigos, do mais novo ao mais velho: Lolitos Control (1.4–1.7) e Lolitos Otimizações (até 1.3)
 LEGACY_APP_IDS = ("LolitosControl", "LolitosOtimizacoes")
 LEGACY_EXES = ("LolitosControl.exe", "LolitosOtimizacoes.exe")
-VERSION = "2.5.0"
+VERSION = "2.5.1"
 POWER_PLAN_NAME = "Chinese Control Desempenho"
 LEGACY_POWER_PLAN_NAMES = ("Lolitos Desempenho",)

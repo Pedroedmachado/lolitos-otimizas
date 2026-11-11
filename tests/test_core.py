@@ -824,15 +824,22 @@ def test_speedometer_reaches_int_score():
 
 def test_boost_list_and_report(monkeypatch):
     import lolitos.catalog  # noqa: F401
-    from lolitos.catalog.presets import BOOST, BOOST_CLEAN
+    from lolitos.catalog.presets import BOOST, BOOST_BDO, BOOST_CLEAN, boost_ids
     from lolitos.core.tweaks import CATALOG
     from lolitos.modules import cleanup
     assert len(BOOST) == len(set(BOOST)) == 80 and all(i in CATALOG for i in BOOST)
+    assert all(CATALOG[i].cat == "bdo" and i not in BOOST for i in BOOST_BDO)
+    from lolitos.catalog import presets
+    monkeypatch.setattr(presets, "bdo_here", lambda: True)
+    assert {"bdo_priority", "bdo_gpu_high"} <= set(boost_ids())
+    monkeypatch.setattr(presets, "bdo_here", lambda: False)
+    assert not set(BOOST_BDO) & set(boost_ids())
+    monkeypatch.setattr(presets, "bdo_here", lambda: True)
     assert all(i in cleanup.TARGETS_BY_ID for i in BOOST_CLEAN)
     from lolitos.ui.pages import dashboard
     from lolitos.core import settings
     monkeypatch.setattr(settings, "get", lambda k, d=None: False if k == "restore_point_before" else d)
-    states = {i: ("on" if n % 2 else "off") for n, i in enumerate(BOOST)}
+    states = {i: ("on" if n % 2 else "off") for n, i in enumerate(BOOST + BOOST_BDO)}
     monkeypatch.setattr(dashboard, "_safe_status", lambda t: states.get(t.id, "na"))
     from lolitos.core import engine
     applied = []

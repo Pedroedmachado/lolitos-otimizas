@@ -157,6 +157,8 @@ QLabel#seticon {{ background: {c['deepbg']}; border: 1px solid {c['border2']}; b
     font-size: 13pt; }}
 QPushButton#seg {{ border-radius: 0; padding: 6px 16px; background: {c['panel2']}; }}
 QPushButton#seg:checked {{ background: {c['accent']}; color: white; border-color: {c['accent']}; font-weight: 700; }}
+QFrame#tablehead {{ background: {c['deepbg']}; border: none; border-radius: 8px; }}
+QLabel#th {{ color: {c['muted']}; font-size: 8pt; font-weight: 800; letter-spacing: 0.5px; }}
 QLabel#small {{ color: {c['muted']}; font-size: 8.5pt; }}
 QLabel#counter {{ color: {c['muted']}; font-weight: 600; padding-right: 6px; }}
 QFrame#listrow {{ background: transparent; border: none; border-bottom: 1px solid {c['border']}; }}

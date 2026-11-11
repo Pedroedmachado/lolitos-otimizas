@@ -48,6 +48,20 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.5.1
+
+* **Debloat em tabela:** cada item é uma linha com as colunas Nível, Ajuste, O que faz, Estado e Desfazer.
+  * O nível aparece em cores: Essencial, Recomendado e Avançado.
+  * Nos avançados, o que se perde aparece em amarelo logo abaixo da descrição.
+  * Os prós e contras completos aparecem ao passar o mouse.
+* **Black Desert de volta ao Boost:** quando o jogo está instalado, o Boost também aplica:
+  * prioridade alta para o BDO;
+  * placa de vídeo dedicada;
+  * Filtro de tela desligado no UserCache;
+  * perfil NVIDIA do BDO (só em placa NVIDIA).
+
+  Sem o jogo no PC, esses itens ficam de fora sozinhos e não contam na pontuação.
+
 ## Novidades da 2.5.0
 
 * **Troca de tela com efeitos:** a tela anterior se desfoca enquanto some e o título da nova é digitado. No menu, o
