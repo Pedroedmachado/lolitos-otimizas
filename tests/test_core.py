@@ -778,20 +778,25 @@ def test_onedrive_scripts_balanced():
 
 
 def test_run_returns_when_child_keeps_output_open(monkeypatch):
-    """Antes: 'start explorer.exe' deixava um programa segurando a saída e o Boost travava para sempre."""
+    """Antes: 'start explorer.exe' deixava um programa segurando a saída e o Boost travava para sempre.
+    No Windows (CI) roda o caso real: 'start /b' abre um processo que herda a saída e continua vivo."""
     import os
     import signal
+    import sys
     import time
     from lolitos.core import system
-    monkeypatch.setattr(system, "IS_WIN", True)
-    monkeypatch.setattr(system, "CREATE_NO_WINDOW", 0)
+    win = sys.platform == "win32"
+    if not win:
+        monkeypatch.setattr(system, "IS_WIN", True)
+        monkeypatch.setattr(system, "CREATE_NO_WINDOW", 0)
+        monkeypatch.setattr(system, "_kill_tree", lambda pid: os.kill(pid, signal.SIGKILL))
     t0 = time.time()
-    r = system.run("sleep 20 & echo pronto", shell=True, timeout=30)
-    assert r.ok and "pronto" in r.out and time.time() - t0 < 8
-    monkeypatch.setattr(system, "_kill_tree", lambda pid: os.kill(pid, signal.SIGKILL))
+    cmd = ('start "" /b ping -n 25 127.0.0.1 >nul & echo pronto' if win else "sleep 20 & echo pronto")
+    r = system.run(cmd, shell=True, timeout=60)
+    assert r.ok and "pronto" in r.out and time.time() - t0 < 12, (r, time.time() - t0)
     t0 = time.time()
-    r = system.run(["sleep", "20"], timeout=1)
-    assert r.code == -1 and "tempo esgotado" in r.err and time.time() - t0 < 8
+    r = system.run(["ping", "-n", "30", "127.0.0.1"] if win else ["sleep", "20"], timeout=2)
+    assert r.code == -1 and "tempo esgotado" in r.err and time.time() - t0 < 15, (r, time.time() - t0)
 
 
 def test_speedometer_reaches_int_score():
