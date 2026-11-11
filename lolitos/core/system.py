@@ -122,21 +122,79 @@ def _decode(b: bytes) -> str:
     return b.decode("utf-8", "replace")
 
 
+def _kill_tree(pid: int) -> None:
+    try:
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
+                       creationflags=CREATE_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def run(cmd, timeout: int = 120, shell: bool = False, input_text: str | None = None) -> CmdResult:
-    """Roda um comando sem abrir janela de console."""
+    """Roda um comando sem abrir janela de console e SEMPRE volta.
+
+    O subprocess.run comum pode travar para sempre no Windows: se o comando abre outro programa que continua
+    rodando (ex.: 'start explorer.exe'), esse programa herda a saída e o Python fica esperando ela fechar. Aqui a
+    saída é lida em threads à parte: quando o comando termina (ou passa do tempo e é encerrado com tudo o que
+    abriu), a função volta mesmo que algum programa aberto por ele continue de pé."""
     if not IS_WIN:
         return CmdResult(1, "", "não é Windows")
+    import threading
     try:
-        p = subprocess.run(
-            cmd, shell=shell, capture_output=True, timeout=timeout,
-            input=input_text.encode() if input_text else None,
-            creationflags=CREATE_NO_WINDOW,
-        )
-        return CmdResult(p.returncode, _decode(p.stdout), _decode(p.stderr))
-    except subprocess.TimeoutExpired:
-        return CmdResult(-1, "", f"tempo esgotado ({timeout}s)")
+        p = subprocess.Popen(cmd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             stdin=subprocess.PIPE if input_text else subprocess.DEVNULL,
+                             creationflags=CREATE_NO_WINDOW)
     except FileNotFoundError as e:
         return CmdResult(-2, "", str(e))
+    except OSError as e:
+        return CmdResult(-3, "", str(e))
+    out, err = [], []
+
+    def pump(stream, sink):
+        try:
+            for chunk in iter(lambda: stream.read1(65536), b""):     # read1: entrega o que já chegou
+                sink.append(chunk)
+        except (OSError, ValueError):
+            pass
+    readers = [threading.Thread(target=pump, args=(p.stdout, out), daemon=True),
+               threading.Thread(target=pump, args=(p.stderr, err), daemon=True)]
+    for t in readers:
+        t.start()
+    if input_text:
+        try:
+            p.stdin.write(input_text.encode())
+            p.stdin.close()
+        except OSError:
+            pass
+    timed_out = False
+    try:
+        p.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        _kill_tree(p.pid)
+        try:
+            p.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            pass
+    for t in readers:            # um programa que o comando deixou aberto pode segurar a saída: não espera por ele
+        t.join(timeout=3)
+    o, e = _decode(b"".join(out)), _decode(b"".join(err))
+    if timed_out:
+        return CmdResult(-1, o, (e + "\n" if e else "") + f"tempo esgotado ({timeout}s)")
+    return CmdResult(p.returncode if p.returncode is not None else -1, o, e)
+
+
+def launch(cmd: list[str]) -> bool:
+    """Abre um programa e não espera por ele (sem herdar a saída do app)."""
+    if not IS_WIN:
+        return False
+    try:
+        subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         close_fds=True, creationflags=0x00000008 | 0x00000200)   # DETACHED | NEW_PROCESS_GROUP
+        return True
+    except OSError:
+        return False
 
 
 def powershell(script: str, timeout: int = 180) -> CmdResult:

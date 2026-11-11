@@ -24,19 +24,26 @@ FIX_PAGE = {"cleanup": "limpeza", "startup": "inicializacao", "antivirus": "defe
             "refresh_max": "gpu", "bios": "meupc", "reboot": "restauracao"}
 def boost(progress=None):
     say = progress or (lambda s: None)
-    pend = [CATALOG[i] for i in boost_ids() if CATALOG[i].status() not in ("on", "na")]
+    say("Verificando o que ainda falta aplicar neste PC…")
+    pend = [CATALOG[i] for i in boost_ids() if _safe_status(CATALOG[i]) not in ("on", "na")]
     say(f"{len(pend)} ajuste(s) recomendados pendentes neste PC.")
-    out = bulk_apply(pend, say) if pend else "Todos os ajustes do Boost já estavam ativos."
+    out = bulk_apply(pend, say, recheck=False) if pend else "Todos os ajustes do Boost já estavam ativos."
     say("Limpando temporários do Windows e do usuário…")
     freed = 0
     for tid in ("user_temp", "win_temp"):
-        _, b, _ = cleanup.clean(cleanup.TARGETS_BY_ID[tid])
-        freed += b
+        try:
+            _, b, _ = cleanup.clean(cleanup.TARGETS_BY_ID[tid])
+            freed += b
+        except Exception as e:  # noqa: BLE001 — a limpeza nunca pode parar o Boost
+            say(f"   limpeza: {e}")
     from lolitos.core.system import human_size
     say(f"   {human_size(freed)} liberados")
     say("Liberando memória RAM…")
-    r = memory.free_ram()
-    say(f"   {r['freed'] / 1024**2:.0f} MB liberados")
+    try:
+        r = memory.free_ram()
+        say(f"   {r['freed'] / 1024**2:.0f} MB liberados")
+    except Exception as e:  # noqa: BLE001
+        say(f"   memória: {e}")
     return out
 
 
@@ -61,7 +68,7 @@ def _score_pool():
     if _SCORE_POOL is None:
         from PySide6.QtCore import QThreadPool
         _SCORE_POOL = QThreadPool()
-        _SCORE_POOL.setMaxThreadCount(2)
+        _SCORE_POOL.setMaxThreadCount(4)      # uma análise lenta não segura as próximas
     return _SCORE_POOL
 
 
@@ -72,16 +79,38 @@ def _safe_status(t) -> str:
         return "off"
 
 
+_LAST_CHECKS: list = []
+CHECKUP_MAX_S = 60
+
+
+def _checks_capped() -> list:
+    """O check-up do Windows (eventos, firewall, drivers…) pode demorar em alguns PCs. A nota espera no máximo
+    CHECKUP_MAX_S; se passar disso, usa o resultado anterior (ou só os ajustes) e o check-up termina sozinho em
+    segundo plano, guardando o resultado para a próxima vez."""
+    import threading
+    box: dict = {}
+
+    def work():
+        try:
+            box["r"] = checkup.run_checkup()
+            _LAST_CHECKS[:] = box["r"]
+        except Exception:  # noqa: BLE001 — sem o check-up a nota usa só os ajustes
+            logging.getLogger("lolitos").exception("check-up do Painel")
+    th = threading.Thread(target=work, daemon=True, name="checkup-painel")
+    th.start()
+    th.join(CHECKUP_MAX_S)
+    if "r" in box:
+        return box["r"]
+    logging.getLogger("lolitos").warning("check-up do Painel passou de %ss; usando o anterior", CHECKUP_MAX_S)
+    return list(_LAST_CHECKS)
+
+
 def compute_score():
     ids = boost_ids()
     st = {i: _safe_status(CATALOG[i]) for i in ids}
     valid = [s for s in st.values() if s != "na"]
     ratio = sum(1 for s in valid if s == "on") / len(valid) if valid else 1
-    try:
-        checks = checkup.run_checkup()
-    except Exception:  # noqa: BLE001 — sem o check-up a nota usa só os ajustes
-        logging.getLogger("lolitos").exception("check-up do Painel")
-        checks = []
+    checks = _checks_capped()
     pending = sum(1 for s in valid if s != "on")
     pend_ids = [i for i, s in st.items() if s not in ("on", "na")]
     return checkup.score(checks, ratio), pending, checks, pend_ids

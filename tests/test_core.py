@@ -775,3 +775,43 @@ def test_onedrive_scripts_balanced():
     for s in (ONEDRIVE_UNINSTALL, ONEDRIVE_INSTALL):
         assert s.count("{") == s.count("}") and s.count("(") == s.count(")") and s.count('"') % 2 == 0
     assert "/uninstall" in ONEDRIVE_UNINSTALL and "throw" in ONEDRIVE_UNINSTALL
+
+
+def test_run_returns_when_child_keeps_output_open(monkeypatch):
+    """Antes: 'start explorer.exe' deixava um programa segurando a saída e o Boost travava para sempre."""
+    import os
+    import signal
+    import time
+    from lolitos.core import system
+    monkeypatch.setattr(system, "IS_WIN", True)
+    monkeypatch.setattr(system, "CREATE_NO_WINDOW", 0)
+    t0 = time.time()
+    r = system.run("sleep 20 & echo pronto", shell=True, timeout=30)
+    assert r.ok and "pronto" in r.out and time.time() - t0 < 8
+    monkeypatch.setattr(system, "_kill_tree", lambda pid: os.kill(pid, signal.SIGKILL))
+    t0 = time.time()
+    r = system.run(["sleep", "20"], timeout=1)
+    assert r.code == -1 and "tempo esgotado" in r.err and time.time() - t0 < 8
+
+
+def test_speedometer_reaches_int_score():
+    """A nota chega como int: a animação do ponteiro tem que chegar nela (antes ficava parada no zero)."""
+    import time
+    from PySide6.QtWidgets import QApplication
+    from lolitos.ui import theme
+    from lolitos.ui.charts import Speedometer
+    app = QApplication.instance() or QApplication([])
+    theme.use("blue", 2)
+    g = Speedometer()
+    g.show()
+    app.processEvents()
+    g.set(34)
+    end = time.time() + 2
+    while time.time() < end and g.value != 34.0:
+        app.processEvents()
+        time.sleep(0.01)
+    assert g.value == 34.0
+    theme.use("blue", 0)
+    g.set(70)
+    assert g.value == 70.0
+    theme.use("blue", 2)

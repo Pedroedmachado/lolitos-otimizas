@@ -2930,5 +2930,13 @@
 "do limite": "of the limit",
 "Básicos: vidro, telas esmaecendo, chaves deslizando e brilho nos botões. Completos: também onda ao clicar, reflexo nos botões principais, luz que segue o mouse, cartões que levantam e telas que entram deslizando. Em PC fraco, use Desligados.": "Basic: glass, fading screens, sliding switches and glow on buttons. Full: also a ripple on click, a shine across main buttons, light that follows the mouse, cards that lift and screens that slide in. On a weak PC, use Off.",
 "Desinstala o OneDrive pelo desinstalador dele mesmo. Arquivos já baixados continuam na sua pasta; os da nuvem continuam na conta.": "Uninstalls OneDrive with its own uninstaller. Files already downloaded stay in your folder; cloud files stay in your account.",
-"{}: o Windows marca este recurso como parte fixa do idioma instalado e não deixa remover.": "{}: Windows marks this feature as a fixed part of the installed language and won't let it be removed."
+"{}: o Windows marca este recurso como parte fixa do idioma instalado e não deixa remover.": "{}: Windows marks this feature as a fixed part of the installed language and won't let it be removed.",
+"Verificando o que ainda falta aplicar neste PC…": "Checking what is still missing on this PC…",
+"Criando ponto de restauração (ou reaproveitando o das últimas 24 h); pode levar alguns minutos…": "Creating a restore point (or reusing the one from the last 24 h); this can take a few minutes…",
+"   não deu para criar o ponto ({}); seguindo mesmo assim": "   couldn't create the point ({}); continuing anyway",
+"Continuar em segundo plano": "Continue in the background",
+"Fecha esta janela; a tarefa continua e o resultado fica no histórico (Restauração).": "Closes this window; the task keeps going and the result goes to the history (Restore).",
+"Rodando há {}": "Running for {}",
+"o Windows está trabalhando neste passo, aguarde…": "Windows is working on this step, please wait…",
+"Terminou em {}": "Finished in {}"
 }

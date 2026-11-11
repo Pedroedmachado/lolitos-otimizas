@@ -39,7 +39,7 @@ def create(description: str = "", force: bool = False) -> tuple[bool, str]:
         pass
     r = powershell(
         "Enable-ComputerRestore -Drive ($env:SystemDrive + '\\') -ErrorAction SilentlyContinue;"
-        f"Checkpoint-Computer -Description '{desc}' -RestorePointType MODIFY_SETTINGS", timeout=600)
+        f"Checkpoint-Computer -Description '{desc}' -RestorePointType MODIFY_SETTINGS", timeout=240)
     ok = r.ok
     history.add("restore", "Ponto de restauração criado" if ok else "Falha ao criar ponto de restauração",
                 "Restauração", success=ok, detail=(r.err or "")[:300], reversible=False)

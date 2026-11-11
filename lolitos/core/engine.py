@@ -102,9 +102,10 @@ def apply_many(tweaks: Iterable[Tweak], progress: Progress | None = None,
     for t in tweaks:
         if t.id in blocked:
             continue
-        st = t.status()
-        if st == "na" or (skip_applied and st == "on"):
-            continue
+        if skip_applied:          # quem chama já filtrou (ex.: Boost) passa skip_applied=False: não lê duas vezes
+            st = t.status()
+            if st == "na" or st == "on":
+                continue
         needs_explorer = t.explorer
         t.explorer = False           # reinicia o Explorer só uma vez no fim
         try:
@@ -118,5 +119,10 @@ def apply_many(tweaks: Iterable[Tweak], progress: Progress | None = None,
 
 
 def restart_explorer() -> None:
+    import os
+    import time
+
+    from lolitos.core.system import launch
     run(["taskkill", "/f", "/im", "explorer.exe"], timeout=20)
-    run("start explorer.exe", shell=True, timeout=20)
+    time.sleep(1)
+    launch([os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "explorer.exe")])

@@ -48,6 +48,20 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.4.2
+
+* **Boost completo não trava mais.** Quando um ajuste pedia para reiniciar o Explorer, a janela do Boost ficava
+  esperando para sempre. Os comandos do app agora sempre voltam, mesmo quando abrem outro programa, e quem passa
+  do tempo é encerrado junto com o que abriu.
+* A janela do Boost (e de qualquer tarefa) mostra há quanto tempo está rodando, avisa quando o Windows está
+  demorando num passo e tem *Continuar em segundo plano*.
+* Se não der para criar o ponto de restauração, o Boost avisa e segue em vez de esperar 10 minutos.
+* **Pontuação de otimização voltou a funcionar.**
+  * O ponteiro do velocímetro ficava parado no zero (a animação nova não aceitava a nota inteira).
+  * A análise ficou mais leve: a saúde dos discos só é lida no Meu PC, e o hardware fica guardado por
+    10 minutos.
+  * O check-up do Windows tem tempo máximo e não segura mais a nota.
+
 ## Novidades da 2.4.1
 
 * **Debloat avançado corrigido:**

@@ -14,7 +14,7 @@ $o.board = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,
 $o.bios = Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,@{n='Date';e={$_.ReleaseDate.ToString('dd/MM/yyyy')}}
 $o.gpu = Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate,AdapterRAM,AdapterCompatibility,PNPDeviceID,VideoProcessor,@{n='DriverDate';e={if($_.DriverDate){$_.DriverDate.ToString('dd/MM/yyyy')}}}
 $o.vram = @(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0*' -ErrorAction SilentlyContinue | Where-Object { $_.'HardwareInformation.qwMemorySize' } | ForEach-Object { [ordered]@{desc=$_.DriverDesc; bytes=[int64]$_.'HardwareInformation.qwMemorySize'} })
-$o.disks = Get-PhysicalDisk | ForEach-Object { $r = $_ | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue; [ordered]@{FriendlyName=$_.FriendlyName; MediaType=[string]$_.MediaType; BusType=[string]$_.BusType; HealthStatus=[string]$_.HealthStatus; Size=[int64]$_.Size; Temperature=$r.Temperature; Wear=$r.Wear; PowerOnHours=$r.PowerOnHours} }
+$o.disks = @(Get-PhysicalDisk | ForEach-Object { [ordered]@{FriendlyName=$_.FriendlyName; MediaType=[string]$_.MediaType; BusType=[string]$_.BusType; HealthStatus=[string]$_.HealthStatus; Size=[int64]$_.Size; DeviceId=[string]$_.DeviceId} })
 $o.os = Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,@{n='Boot';e={$_.LastBootUpTime.ToString('o')}},@{n='Installed';e={$_.InstallDate.ToString('dd/MM/yyyy')}}
 try { $o.secureboot = [bool](Confirm-SecureBootUEFI) } catch { $o.secureboot = $null }
 try { $t = Get-Tpm; $o.tpm = [ordered]@{present=$t.TpmPresent;ready=$t.TpmReady} } catch { $o.tpm = $null }
@@ -36,10 +36,36 @@ def _speed_from_part(part: str) -> int:
     return max(nums) if nums else 0
 
 
-def read_all() -> dict:
-    d = powershell_json(SCRIPT, timeout=120) or {}
-    for k in ("cpu", "ram", "gpu", "disks", "av", "vram"):
-        d[k] = [x for x in as_list(d.get(k)) if x]
+# Temperatura, desgaste e horas dos discos: só no Meu PC (em alguns PCs essa leitura demora muito).
+DISK_HEALTH = r"""
+@(Get-PhysicalDisk | ForEach-Object { $r = $_ | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue;
+  [ordered]@{DeviceId=[string]$_.DeviceId; Temperature=$r.Temperature; Wear=$r.Wear; PowerOnHours=$r.PowerOnHours} })
+"""
+_CACHE: dict = {"t": 0.0, "d": None}
+_CACHE_S = 600
+
+
+def read_all(full: bool = False) -> dict:
+    """Hardware lido do Windows. A leitura básica fica guardada por 10 minutos (o hardware não muda) e é a que o
+    Painel e o Check-up usam; full=True acrescenta a saúde dos discos (só o Meu PC pede)."""
+    import copy
+    import time
+    if _CACHE["d"] is None or time.time() - _CACHE["t"] > _CACHE_S:
+        d = powershell_json(SCRIPT, timeout=90) or {}
+        for k in ("cpu", "ram", "gpu", "disks", "av", "vram"):
+            d[k] = [x for x in as_list(d.get(k)) if x]
+        if d.get("cpu") or d.get("os"):
+            _CACHE.update(t=time.time(), d=d)
+        else:
+            return d
+    d = copy.deepcopy(_CACHE["d"])
+    if full:
+        health = {x.get("DeviceId"): x for x in as_list(powershell_json(DISK_HEALTH, timeout=45)) if x}
+        for disk in d["disks"]:
+            h = health.get(disk.get("DeviceId")) or {}
+            for k in ("Temperature", "Wear", "PowerOnHours"):
+                if h.get(k) not in (None, ""):
+                    disk[k] = h[k]
     return d
 
 

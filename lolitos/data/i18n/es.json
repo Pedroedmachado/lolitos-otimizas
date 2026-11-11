@@ -2930,5 +2930,13 @@
 "do limite": "del límite",
 "Básicos: vidro, telas esmaecendo, chaves deslizando e brilho nos botões. Completos: também onda ao clicar, reflexo nos botões principais, luz que segue o mouse, cartões que levantam e telas que entram deslizando. Em PC fraco, use Desligados.": "Básicos: vidrio, pantallas que se desvanecen, interruptores que se deslizan y brillo en los botones. Completos: también onda al hacer clic, reflejo en los botones principales, luz que sigue al ratón, tarjetas que se elevan y pantallas que entran deslizándose. En un PC débil, usa Desactivados.",
 "Desinstala o OneDrive pelo desinstalador dele mesmo. Arquivos já baixados continuam na sua pasta; os da nuvem continuam na conta.": "Desinstala OneDrive con su propio desinstalador. Los archivos ya descargados siguen en tu carpeta; los de la nube siguen en la cuenta.",
-"{}: o Windows marca este recurso como parte fixa do idioma instalado e não deixa remover.": "{}: Windows marca este componente como parte fija del idioma instalado y no deja quitarlo."
+"{}: o Windows marca este recurso como parte fixa do idioma instalado e não deixa remover.": "{}: Windows marca este componente como parte fija del idioma instalado y no deja quitarlo.",
+"Verificando o que ainda falta aplicar neste PC…": "Comprobando lo que aún falta aplicar en este PC…",
+"Criando ponto de restauração (ou reaproveitando o das últimas 24 h); pode levar alguns minutos…": "Creando un punto de restauración (o reutilizando el de las últimas 24 h); puede tardar unos minutos…",
+"   não deu para criar o ponto ({}); seguindo mesmo assim": "   no se pudo crear el punto ({}); se continúa igualmente",
+"Continuar em segundo plano": "Continuar en segundo plano",
+"Fecha esta janela; a tarefa continua e o resultado fica no histórico (Restauração).": "Cierra esta ventana; la tarea sigue y el resultado queda en el historial (Restauración).",
+"Rodando há {}": "En marcha desde hace {}",
+"o Windows está trabalhando neste passo, aguarde…": "Windows está trabajando en este paso, espera…",
+"Terminou em {}": "Terminó en {}"
 }

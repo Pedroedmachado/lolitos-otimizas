@@ -34,7 +34,7 @@ def _box(title: str, rows) -> Card:
 
 
 def _collect():
-    d = hwinfo.read_all()
+    d = hwinfo.read_all(full=True)
     cpu0 = (d.get("cpu") or [{}])[0]
     return {"d": d, "rs": hwinfo.ram_summary(d), "id": cpuinfo.read_id((cpu0.get("Name") or "").strip()),
             "caches": cpuinfo.read_caches(), "nv": {**gpu.read(), **gpu.details(), "name": gpu.name()},

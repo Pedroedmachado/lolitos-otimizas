@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import inspect
+import time
 import traceback
 
 from PySide6.QtCore import QObject, QRectF, QRunnable, Qt, QThreadPool, Signal, Slot
@@ -105,6 +106,9 @@ def run_async(fn, *args, on_done=None, on_error=None, on_progress=None, _pool=No
     return job.sig
 
 
+_BG_DIALOGS: set = set()
+
+
 class TaskDialog(QDialog):
     """Janela de tarefa: mostra cada passo e só libera 'Fechar' no fim."""
 
@@ -130,20 +134,63 @@ class TaskDialog(QDialog):
         self.log.setReadOnly(True)
         lay.addWidget(self.log, 1)
         row = QHBoxLayout()
+        self.clock = QLabel("")
+        self.clock.setObjectName("muted")
+        row.addWidget(self.clock)
         row.addStretch()
+        self.bg = QPushButton(tr("Continuar em segundo plano"))
+        self.bg.setToolTip(tr("Fecha esta janela; a tarefa continua e o resultado fica no histórico (Restauração)."))
+        self.bg.clicked.connect(self._background)
+        row.addWidget(self.bg)
         self.btn = QPushButton(tr("Fechar"))
         self.btn.setEnabled(False)
         self.btn.clicked.connect(self.accept)
         row.addWidget(self.btn)
         lay.addLayout(row)
         self._on_done = on_done
+        self._t0 = time.time()
+        self._last = self._t0
+        self._finished = False
+        from PySide6.QtCore import QTimer
+        self._tick = QTimer(self)
+        self._tick.timeout.connect(self._clock)
+        self._tick.start(1000)
         run_async(fn, *args, on_done=self._done, on_error=self._err, on_progress=self.add, **kwargs)
 
+    def _clock(self):
+        el, quiet = time.time() - self._t0, time.time() - self._last
+        txt = tr("Rodando há {}").replace("{}", f"{int(el) // 60}:{int(el) % 60:02d}")
+        if quiet > 20:
+            txt += " · " + tr("o Windows está trabalhando neste passo, aguarde…")
+        self.clock.setText(txt)
+
+    def _background(self):
+        self._bg = True
+        _BG_DIALOGS.add(self)       # mantém vivo até a tarefa terminar
+        self.hide()
+        self.done(0)
+
     def add(self, s):
-        self.log.appendPlainText(tr(str(s)))
+        self._last = time.time()
+        try:
+            self.log.appendPlainText(tr(str(s)))
+        except RuntimeError:        # janela já fechada (tarefa em segundo plano)
+            pass
 
     def _done(self, res):
+        self._finished = True
+        try:
+            self._tick.stop()
+            self.bg.hide()
+            self.clock.setText(tr("Terminou em {}").replace("{}", f"{int(time.time() - self._t0)} s"))
+        except RuntimeError:
+            pass
         self.result_value = res
+        if getattr(self, "_bg", False):
+            _BG_DIALOGS.discard(self)
+            if self._on_done:
+                self._on_done(res)
+            return
         self.bar.setRange(0, 1)
         self.bar.setValue(1)
         if isinstance(res, str) and res:
@@ -154,13 +201,22 @@ class TaskDialog(QDialog):
             self._on_done(res)
 
     def _err(self, msg):
-        self.bar.setRange(0, 1)
-        self.add("\n" + tr("Erro: {}").replace("{}", str(msg)))
-        self.btn.setEnabled(True)
+        self._finished = True
+        try:
+            self._tick.stop()
+            self.bg.hide()
+            self.bar.setRange(0, 1)
+            self.add("\n" + tr("Erro: {}").replace("{}", str(msg)))
+            self.btn.setEnabled(True)
+        except RuntimeError:
+            pass
+        _BG_DIALOGS.discard(self)
 
     def reject(self):
         if self.btn.isEnabled():
             super().reject()
+        else:
+            self._background()
 
 
 # ===================================================================== blocos visuais

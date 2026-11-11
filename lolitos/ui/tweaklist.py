@@ -13,13 +13,13 @@ def statuses(tweaks):
     return {t.id: t.status() for t in tweaks}
 
 
-def bulk_apply(tweaks, progress=None, restore_point=True):
+def bulk_apply(tweaks, progress=None, restore_point=True, recheck=True):
     say = progress or (lambda s: None)
     if restore_point and settings.get("restore_point_before"):
-        say("Criando ponto de restauração (ou reaproveitando o das últimas 24 h)…")
+        say("Criando ponto de restauração (ou reaproveitando o das últimas 24 h); pode levar alguns minutos…")
         ok, msg = restore.create()
-        say(f"   {msg}")
-    res = engine.apply_many(tweaks, say)
+        say(f"   {msg}" if ok else f"   não deu para criar o ponto ({msg}); seguindo mesmo assim")
+    res = engine.apply_many(tweaks, say, skip_applied=recheck)
     ok = sum(1 for r in res if r.ok)
     restart = any(r.tweak.restart for r in res if r.ok)
     lines = [f"{ok} de {len(res)} ajuste(s) aplicados."]
