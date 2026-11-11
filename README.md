@@ -48,6 +48,20 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.4.3
+
+* **Boost igual ao do app de referência:**
+  * Aplica a mesma lista de 80 ajustes, na mesma ordem. Entraram *Liberar o armazenamento reservado*, *Remover o
+    componente Recall*, *Remover os apps de IA* e o *nome no menu de inicialização*.
+  * Saíram do Boost itens de aparência e de apps (menu clássico, esconder pesquisa, Nagle, Brave, Discord…); eles
+    continuam nas telas deles e na Otimização Completa.
+  * Itens que não valem para o seu PC (Windows 10, notebook etc.) ficam de fora sozinhos.
+* **Limpeza do Boost mais completa:** temporários do usuário e do Windows, cache do Windows Update, cache de
+  Otimização de Entrega, relatórios de erro e cache de miniaturas (apagado com o Explorer fechado e reaberto em
+  seguida).
+* **Relatório do Boost em seções:** ponto de restauração, *Já aplicados neste PC* com a lista ✓, cada ajuste aplicado
+  (*Feito.* ou *Feito. Vale após reiniciar.*), cada limpeza com o quanto liberou e a RAM liberada.
+
 ## Novidades da 2.4.2
 
 * **Boost completo não trava mais.** Quando um ajuste pedia para reiniciar o Explorer, a janela do Boost ficava

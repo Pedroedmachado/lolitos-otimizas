@@ -17,10 +17,37 @@ def _ids(pred) -> list[str]:
     return [t.id for t in CATALOG.values() if pred(t)]
 
 
+# O Boost (Painel e Formatação) aplica exatamente esta lista, na mesma ordem do Boost do app de referência.
+# Itens que não valem para o PC (ex.: Windows 10, notebook) ficam de fora pela condição 'when' de cada ajuste.
+# Os outros ajustes essenciais e recomendados continuam nas telas deles e na Otimização Completa.
+BOOST = [
+    "activity_off", "consumer_features_off", "end_task", "hibernation_off", "telemetry_min", "input_collect_off",
+    "track_progs_off", "ps_telemetry_off", "tailored_off", "ad_id_off", "wer_off", "wpbt_off", "background_apps_off",
+    "reserved_storage_off", "storage_sense_off", "copilot_off", "recall_off", "remove_recall_feature",
+    "clicktodo_off", "paint_ai_off", "notepad_ai_off", "edge_copilot_off", "menu_delay", "edge_background_off",
+    "widgets_off", "chat_meetnow_off", "telemetry_tasks", "data_collect_tasks", "appcompat_telemetry_off",
+    "delivery_p2p_off", "search_local", "speech_models_off", "settings_agent_off", "push_install_off",
+    "motion_bg_off", "no_outlook_devhome", "notepad_no_ad", "game_dvr_off", "clipboard_cloud_off", "memcomp_off",
+    "foreground_boost", "core_parking", "pcie_aspm", "sysmain_off", "ntfs_lastaccess", "fast_startup_off",
+    "game_mode", "mmcss_games", "system_responsiveness", "mouse_accel_off", "refresh_max", "hags_on",
+    "net_throttling_off", "wifi_max", "visual_light", "show_ext", "ads_start", "spotlight_off", "sync_ads_off",
+    "device_metadata_off", "ceip_off", "mrt_report_off", "scoobe_off", "autoplay_off", "narrator_hotkey_off",
+    "services_manual", "feedback_off", "remove_copilot_apps", "power_plan", "boot_menu_name", "sticky_keys_off",
+    "mouse_no_delay", "explorer_cloud_off", "diag_collector_manual", "pca_off", "edge_clean",
+    "office_telemetry_off", "experiments_off", "wu_no_reboot", "remote_assist_off",
+]
+# Limpeza que o Boost faz depois dos ajustes (alvos de lolitos.modules.cleanup)
+BOOST_CLEAN = ["user_temp", "win_temp", "wu_cache", "delivery", "wer", "thumbs"]
+
+
 def boost_ids() -> list[str]:
-    """O que o 'Boost agora' aplica: essencial + recomendado para este PC (sem remover apps)."""
-    return _ids(lambda t: t.level in (ESSENTIAL, RECOMMENDED) and t.cat != "debloat"
-                and t.recommended_here() and t.reversible)
+    """O que o 'Boost agora' aplica neste PC: a lista BOOST menos o que não se aplica aqui."""
+    out = []
+    for i in BOOST:
+        t = CATALOG.get(i)
+        if t is not None and (t.when() if t.when else True):
+            out.append(i)
+    return out
 
 
 @dataclass

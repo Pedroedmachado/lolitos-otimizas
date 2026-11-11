@@ -118,11 +118,16 @@ def apply_many(tweaks: Iterable[Tweak], progress: Progress | None = None,
     return out
 
 
-def restart_explorer() -> None:
+def restart_explorer(while_down: Callable[[], None] | None = None) -> None:
+    """Fecha e reabre o Explorer. while_down roda com ele fechado (ex.: apagar o cache de miniaturas)."""
     import os
     import time
 
     from lolitos.core.system import launch
     run(["taskkill", "/f", "/im", "explorer.exe"], timeout=20)
     time.sleep(1)
-    launch([os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "explorer.exe")])
+    try:
+        if while_down:
+            while_down()
+    finally:
+        launch([os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "explorer.exe")])

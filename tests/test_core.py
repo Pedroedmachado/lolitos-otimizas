@@ -820,3 +820,30 @@ def test_speedometer_reaches_int_score():
     g.set(70)
     assert g.value == 70.0
     theme.use("blue", 2)
+
+
+def test_boost_list_and_report(monkeypatch):
+    import lolitos.catalog  # noqa: F401
+    from lolitos.catalog.presets import BOOST, BOOST_CLEAN
+    from lolitos.core.tweaks import CATALOG
+    from lolitos.modules import cleanup
+    assert len(BOOST) == len(set(BOOST)) == 80 and all(i in CATALOG for i in BOOST)
+    assert all(i in cleanup.TARGETS_BY_ID for i in BOOST_CLEAN)
+    from lolitos.ui.pages import dashboard
+    from lolitos.core import settings
+    monkeypatch.setattr(settings, "get", lambda k, d=None: False if k == "restore_point_before" else d)
+    states = {i: ("on" if n % 2 else "off") for n, i in enumerate(BOOST)}
+    monkeypatch.setattr(dashboard, "_safe_status", lambda t: states.get(t.id, "na"))
+    from lolitos.core import engine
+    applied = []
+    monkeypatch.setattr(engine, "apply_tweak",
+                        lambda t, say=None: applied.append(t.id) or engine.ApplyResult(t, True))
+    monkeypatch.setattr(engine, "restart_explorer", lambda f=None: f and f())
+    monkeypatch.setattr(cleanup, "clean", lambda tg: (3, 2048, 1))
+    log = []
+    out = dashboard.boost(log.append)
+    txt = "\n".join(log)
+    assert "━━ Já aplicados neste PC" in txt and "✓ " in txt and "━━ Aplicar: " in txt
+    assert "━━ Cache do Windows Update" in txt and "Miniaturas apagadas" in txt and "━━ Liberar memória RAM" in txt
+    assert applied and all(states[i] == "off" for i in applied)
+    assert "aplicados agora" in out

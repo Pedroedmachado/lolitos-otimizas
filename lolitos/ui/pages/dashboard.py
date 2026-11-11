@@ -23,28 +23,92 @@ from lolitos.ui.widgets import (Card, IconTile, Page, StatTile, TaskDialog, butt
 FIX_PAGE = {"cleanup": "limpeza", "startup": "inicializacao", "antivirus": "defender", "restore_point": "restauracao",
             "refresh_max": "gpu", "bios": "meupc", "reboot": "restauracao"}
 def boost(progress=None):
-    say = progress or (lambda s: None)
-    say("Verificando o que ainda falta aplicar neste PC…")
-    pend = [CATALOG[i] for i in boost_ids() if _safe_status(CATALOG[i]) not in ("on", "na")]
-    say(f"{len(pend)} ajuste(s) recomendados pendentes neste PC.")
-    out = bulk_apply(pend, say, recheck=False) if pend else "Todos os ajustes do Boost já estavam ativos."
-    say("Limpando temporários do Windows e do usuário…")
-    freed = 0
-    for tid in ("user_temp", "win_temp"):
-        try:
-            _, b, _ = cleanup.clean(cleanup.TARGETS_BY_ID[tid])
-            freed += b
-        except Exception as e:  # noqa: BLE001 — a limpeza nunca pode parar o Boost
-            say(f"   limpeza: {e}")
+    """Boost completo, com o relatório em seções: ponto de restauração, o que já estava aplicado, cada ajuste
+    aplicado, cada limpeza e a RAM."""
+    from lolitos.catalog.presets import BOOST_CLEAN
+    from lolitos.core import engine, history, restore
     from lolitos.core.system import human_size
-    say(f"   {human_size(freed)} liberados")
-    say("Liberando memória RAM…")
+    say = progress or (lambda s: None)
+
+    def head(t):
+        say("")
+        say(f"━━ {t}")
+
+    if settings.get("restore_point_before"):
+        head("Ponto de restauração")
+        say("Criando o ponto de restauração (snapshot do disco; pode levar um ou dois minutos)…")
+        ok, msg = restore.create()
+        say(msg if ok else f"Não deu para criar o ponto ({msg}); seguindo mesmo assim.")
+
+    say("Verificando o que já está aplicado neste PC…")
+    tw = [CATALOG[i] for i in boost_ids()]
+    st = {t.id: _safe_status(t) for t in tw}
+    done = [t for t in tw if st[t.id] == "on"]
+    pend = [t for t in tw if st[t.id] not in ("on", "na")]
+    head(f"Já aplicados neste PC ({len(done)})")
+    for t in done:
+        say(f"✓ {t.title}")
+
+    blocked = history.blocked()
+    ok_n, bad, need_restart, need_explorer = 0, [], False, False
+    for t in pend:
+        head(f"Aplicar: {t.title}")
+        if t.id in blocked:
+            say("Pulado: o Windows bloqueou este ajuste numa tentativa anterior.")
+            continue
+        exp = t.explorer
+        t.explorer = False              # o Explorer reinicia uma vez só, no fim
+        try:
+            r = engine.apply_tweak(t, lambda m: None if m.startswith("Aplicando:") else say(m.strip()))
+        finally:
+            t.explorer = exp
+        if r.ok:
+            ok_n += 1
+            need_explorer |= exp
+            need_restart |= t.restart
+            say("Feito. Vale após reiniciar." if t.restart else "Feito.")
+        else:
+            bad.append(t.title)
+            say(f"Não aplicado: {r.msg or 'bloqueado pelo Windows'}")
+
+    for tid in BOOST_CLEAN:
+        tg = cleanup.TARGETS_BY_ID.get(tid)
+        if tg is None:
+            continue
+        head(tg.name)
+
+        def run_clean(tg=tg):
+            n, b, kept = cleanup.clean(tg)
+            if tid == "thumbs":
+                say(f"Miniaturas apagadas: {human_size(b)}. O Explorer recria conforme você navega.")
+            else:
+                say(f"Liberados {human_size(b)} ({n} arquivo(s)).")
+                if kept:
+                    say(f"{kept} item(ns) em uso foram mantidos.")
+        try:
+            if tid == "thumbs":         # o Explorer segura o cache: apaga com ele fechado e já reabre
+                engine.restart_explorer(run_clean)
+                need_explorer = False
+            else:
+                run_clean()
+        except Exception as e:  # noqa: BLE001 — a limpeza nunca pode parar o Boost
+            say(f"Não deu para limpar: {e}")
+    if need_explorer:
+        engine.restart_explorer()
+
+    head("Liberar memória RAM")
     try:
         r = memory.free_ram()
-        say(f"   {r['freed'] / 1024**2:.0f} MB liberados")
+        say(f"{human_size(r['freed'])} de RAM liberados.")
     except Exception as e:  # noqa: BLE001
-        say(f"   memória: {e}")
-    return out
+        say(f"Não deu para liberar: {e}")
+
+    lines = [f"{len(done)} já estavam aplicados, {ok_n} aplicados agora."]
+    if bad:
+        lines.append("Não aplicados: " + "; ".join(bad[:8]))
+    if need_restart:
+        lines.append("Alguns só valem depois de reiniciar o PC.")
+    return "\n".join(lines)
 
 
 def pc_analysis():
