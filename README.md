@@ -48,6 +48,37 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.4.0
+
+* **Debloat refeito numa tela só:**
+  * *Essencial e Recomendado*: Edge, Widgets, Teams, telemetria, Copilot, Recall, propagandas e afins. O que ainda
+    não está aplicado já vem marcado; tem *Marcar todos* e *Desmarcar todos*.
+  * *Avançados*: SysMain, indexação, hibernação, OneDrive, recursos opcionais do Windows. Nada vem marcado e cada
+    item mostra o que se perde; dá para esconder a seção.
+  * *Apps pré-instalados*: só os que existem na sua conta, em caixinhas, com *Atualizar lista* e
+    *Remover selecionados*.
+  * Um botão *Aplicar selecionados (N)* para tudo, com ponto de restauração antes.
+  * Novos itens: *Bloquear instalação automática de software de periféricos* e *Remover reconhecimento de escrita
+    à mão*.
+* **Meu PC em abas:**
+  * *Processador*: codinome, arquitetura, família, modelo, stepping, tecnologia, TDP, microcódigo, instruções e
+    clocks ao vivo.
+  * *Caches* L1, L2 e L3 com vias e linha.
+  * *Placa-mãe*: chipset, revisão, BIOS e sistema.
+  * *Memória* e *Slots de memória*, incluindo os slots vazios.
+  * *Gráficos*: fabricante da placa, arquitetura, núcleos CUDA, TDP, barramento, clocks máximos, VBIOS, PCIe e
+    leitura ao vivo.
+  * *Armazenamento*: temperatura, desgaste e horas ligado.
+  * *Check-up do hardware*: dual channel, pentes em A2/B2, pentes iguais, XMP/EXPO, quantidade de RAM, linhas PCIe
+    da placa de vídeo, saúde dos discos e virtualização.
+  * Clicar numa peça do desenho da placa abre a aba dela, e o *Exportar relatório…* salva tudo em texto.
+* **Efeitos visuais em três níveis** (Configurações ou menu do Tema):
+  * *Desligados*.
+  * *Básicos*: vidro, brilho ao passar o mouse em qualquer botão, chaves que deslizam, telas que esmaecem e
+    velocímetro que sobe até a nota.
+  * *Completos*: tudo do básico, mais onda ao clicar, reflexo nos botões principais, luz que segue o mouse,
+    cartões que levantam com sombra e telas que entram deslizando.
+
 ## Novidades da 2.3.0
 
 * **Núcleos da CPU para o BDO (processadores AMD)**, no estilo do Process Lasso: nova aba no Black Desert com as

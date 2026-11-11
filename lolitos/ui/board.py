@@ -136,6 +136,7 @@ def _yn(v) -> str:
 
 class BoardView(QWidget):
     hovered = Signal(str)
+    clicked = Signal(str)          # chave da peça (cpu, ram0, gpu, m20, sata0, chipset)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -184,6 +185,7 @@ class BoardView(QWidget):
         key = part.key if part else ""
         if key != self.hot:
             self.hot = key
+            self.setCursor(Qt.PointingHandCursor if part else Qt.ArrowCursor)
             self.update()
         if part:
             QToolTip.showText(e.globalPosition().toPoint(),
@@ -194,6 +196,12 @@ class BoardView(QWidget):
     def leaveEvent(self, e):
         self.hot = ""
         self.update()
+
+    def mousePressEvent(self, e):
+        part = self._hit(e.position())
+        if part:
+            self.clicked.emit(part.key)
+        super().mousePressEvent(e)
 
     # ---------------------------------------------------------------- desenho
     def paintEvent(self, _):

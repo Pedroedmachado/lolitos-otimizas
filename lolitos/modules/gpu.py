@@ -188,3 +188,39 @@ def read() -> dict:
     out["pcie_width"] = _uint("nvmlDeviceGetCurrPcieLinkWidth")
     out["pcie_width_max"] = _uint("nvmlDeviceGetMaxPcieLinkWidth")
     return out
+
+
+ARCH = {2: "Kepler", 3: "Maxwell", 4: "Pascal", 5: "Volta", 6: "Turing", 7: "Ampere", 8: "Ada Lovelace",
+        9: "Hopper", 10: "Blackwell", 11: "Blackwell"}
+PROCESS = {"Pascal": "16 nm (TSMC)", "Turing": "12 nm (TSMC)", "Ampere": "8 nm (Samsung)",
+           "Ada Lovelace": "4 nm (TSMC 4N)", "Blackwell": "4 nm (TSMC 4N)"}
+MEMTYPE = {"Pascal": "GDDR5/GDDR5X", "Turing": "GDDR6", "Ampere": "GDDR6/GDDR6X", "Ada Lovelace": "GDDR6/GDDR6X",
+           "Blackwell": "GDDR7"}
+
+
+def details() -> dict:
+    """Dados fixos da placa NVIDIA (para a aba Gráficos): arquitetura, núcleos CUDA, TDP, barramento, clocks
+    máximos, VBIOS. Fora da NVIDIA devolve {} (a tela usa o que o Windows informa)."""
+    if not _init():
+        return {}
+    out = {}
+    a = _uint("nvmlDeviceGetArchitecture")
+    if a is not None:
+        out["arch"] = ARCH.get(a, "")
+        out["process"] = PROCESS.get(out["arch"], "")
+        out["memtype"] = MEMTYPE.get(out["arch"], "")
+    out["cores"] = _uint("nvmlDeviceGetNumGpuCores")
+    lim = _uint("nvmlDeviceGetPowerManagementDefaultLimit")
+    out["tdp_w"] = lim // 1000 if lim else None
+    cur = _uint("nvmlDeviceGetPowerManagementLimit")
+    out["limit_w"] = cur // 1000 if cur else None
+    out["bus_bits"] = _uint("nvmlDeviceGetMemoryBusWidth")
+    out["max_clock"] = _uint("nvmlDeviceGetMaxClockInfo", 0)
+    out["max_mem_clock"] = _uint("nvmlDeviceGetMaxClockInfo", 2)
+    buf = ctypes.create_string_buffer(64)
+    try:
+        if _nvml.nvmlDeviceGetVbiosVersion(_handle, buf, 64) == 0:
+            out["vbios"] = buf.value.decode(errors="ignore")
+    except AttributeError:
+        pass
+    return out

@@ -25,7 +25,8 @@ def _pages():
     from lolitos.ui.pages.dashboard import Dashboard
     from lolitos.ui.pages.debloat_page import DebloatPage
     from lolitos.ui.pages.games_page import GamesPage
-    from lolitos.ui.pages.hardware_page import MyPcPage, PerformancePage
+    from lolitos.ui.pages.hardware_page import PerformancePage
+    from lolitos.ui.pages.mypc_page import MyPcPage
     from lolitos.ui.pages.maintenance_page import MaintenancePage
     from lolitos.ui.pages.fresh_page import FreshPage
     from lolitos.ui.pages.opt_pages import (DefenderAiPage, GpuComparePage, GpuPage, KeyboardPage, MousePage,
@@ -302,12 +303,18 @@ class MainWindow(QMainWindow):
         settings.set("dirty", True)
 
     def apply_theme(self):
-        theme.use(settings.get("theme"), settings.get("visual_effects", True))
+        from lolitos.ui.fx import current_from_settings as _fx_level
+        theme.use(settings.get("theme"), _fx_level())
         app = QApplication.instance()
         app.setStyleSheet(theme.qss())
         for w in app.allWidgets():      # desenhos feitos à mão (gráficos, placa-mãe) pegam as cores novas
             w.update()
         self._theme_text()
+
+    def set_effects(self, lv: int):
+        settings.set("effects_level", int(lv))
+        settings.set("visual_effects", lv > 0)
+        self.apply_theme()
 
     def set_theme(self, key: str):
         settings.set("theme", key)
@@ -333,10 +340,14 @@ class MainWindow(QMainWindow):
             a.setChecked(key == cur)
             a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
         m.addSeparator()
-        fx = m.addAction(tr("Efeitos visuais"))
-        fx.setCheckable(True)
-        fx.setChecked(settings.get("visual_effects", True))
-        fx.triggered.connect(lambda v: (settings.set("visual_effects", v), self.apply_theme()))
+        from lolitos.ui import fx
+        sub = m.addMenu(tr("Efeitos visuais"))
+        cur_fx = fx.current_from_settings()
+        for lv, name in fx.LEVELS:
+            a = sub.addAction(tr(name))
+            a.setCheckable(True)
+            a.setChecked(lv == cur_fx)
+            a.triggered.connect(lambda _=False, v=lv: self.set_effects(v))
         from PySide6.QtCore import QPoint
         m.exec(self.theme_btn.mapToGlobal(QPoint(0, -m.sizeHint().height())))
 

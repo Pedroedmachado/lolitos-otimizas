@@ -10,6 +10,7 @@ _LOCK = threading.RLock()
 DEFAULTS = {
     "theme": "blue",          # dark (Escuro) | light (Claro) | blue (Azul)
     "visual_effects": True,   # vidro e animações
+    "effects_level": 2,       # 0 desligados, 1 básicos, 2 completos
     "tray_on_close": True,
     "restore_point_before": True,
     "overlay_hotkey": "Ctrl+Shift+F10",

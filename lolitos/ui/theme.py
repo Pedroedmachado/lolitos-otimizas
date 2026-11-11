@@ -35,17 +35,22 @@ THEMES = {"dark": DARK, "light": LIGHT, "blue": BLUE}
 THEME_NAMES = [("dark", "Escuro"), ("light", "Claro"), ("blue", "Azul")]
 DEFAULT_THEME = "blue"
 C = dict(BLUE)
-EFFECTS = [True]     # vidro e animações (Configurações › Efeitos visuais)
+EFFECTS = [2]        # nível dos efeitos: 0 desligados, 1 básicos, 2 completos (Configurações › Efeitos visuais)
 
 
 def use(theme: str, effects: bool | None = None) -> None:
     C.clear()
     C.update(THEMES.get(theme, BLUE))
     if effects is not None:
-        EFFECTS[0] = bool(effects)
+        EFFECTS[0] = (2 if effects else 0) if isinstance(effects, bool) else max(0, min(2, int(effects)))
 
 
 def effects() -> bool:
+    """Vidro e animações ligados (nível básico ou completo)."""
+    return EFFECTS[0] > 0
+
+
+def level() -> int:
     return EFFECTS[0]
 
 
@@ -189,7 +194,7 @@ QMenu {{ background: {c['panel']}; border: 1px solid {c['border']}; }}
 QMenu::item {{ padding: 6px 18px; }}
 QMenu::item:selected {{ background: {c['panel2']}; }}
 QMessageBox {{ background: {c['bg']}; }}
-""" + (_glass(c) if EFFECTS[0] else "")
+""" + (_glass(c) if EFFECTS[0] > 0 else "")
 
 
 def _glass(c) -> str:

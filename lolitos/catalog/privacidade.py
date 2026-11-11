@@ -156,6 +156,13 @@ register(
           "Ícones, informações e apps de acompanhamento de aparelhos deixam de ser baixados ao conectar.",
           "privacidade", [Reg(HKLM, POL + r"\Device Metadata", "PreventDeviceMetadataFromNetwork", 1)],
           RECOMMENDED, loss="Instale o software do mouse/teclado pelo site do fabricante."),
+    Tweak("driver_software_off", "Bloquear instalação automática de software de periféricos",
+          "Impede que o Windows instale sozinho programas de fabricantes (Razer, Logitech etc.) ao conectar um "
+          "aparelho. Desfazer volta ao padrão.",
+          "privacidade", [Reg(HKLM, r"SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching",
+                              "SearchOrderConfig", 0)],
+          ADVANCED, loss="O Windows Update também deixa de buscar drivers sozinho: atualize os drivers pelo site do "
+                         "fabricante."),
 
     # ------------------------------------------------------------ atualizações
     Tweak("wu_no_reboot", "Windows Update não reinicia com você usando o PC",

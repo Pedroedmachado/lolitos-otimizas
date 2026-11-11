@@ -74,6 +74,7 @@ CAPABILITIES = [
     ("App.StepsRecorder*", "Gravador de Passos", "A Microsoft já descontinuou."),
     ("App.Support.QuickAssist*", "Assistência Rápida antiga", "Usada em golpes de 'suporte técnico'."),
     ("MathRecognizer*", "Painel de Entrada de Matemática", "Só serve com caneta."),
+    ("Language.Handwriting*", "Reconhecimento de escrita à mão", "Só serve em notebook com caneta ou tela de toque."),
     ("Hello.Face*", "Windows Hello facial", "Não remova se entra no Windows pelo rosto."),
     ("Microsoft.Windows.WordPad*", "WordPad", ""),
     ("Print.Fax.Scan*", "Fax e Scanner do Windows", "Não remova se usa scanner pelo app do Windows."),

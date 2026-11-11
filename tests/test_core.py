@@ -673,3 +673,72 @@ def test_bdo_tips_filter_by_gpu(monkeypatch):
     monkeypatch.setattr(tweaks.pc, "detect", lambda: SimpleNamespace(gpu_vendor="amd"))
     titles = [t for t, _ in tweaks.tips_for_this_pc()]
     assert any("Adrenalin" in t for t in titles) and not any("Painel NVIDIA" in t for t in titles)
+
+
+def test_cpuinfo_ident_and_caches():
+    import struct
+    from lolitos.modules import cpuinfo
+    assert cpuinfo.parse_identifier("AMD64 Family 26 Model 68 Stepping 0") == (26, 68, 0)
+    assert cpuinfo.family_text(0x1A) == "F (estendida B) → 1Ah"
+    assert cpuinfo.model_text(0x44) == "4 (estendido 4) → 44h"
+    assert cpuinfo.lookup("amd", 0x1A, 0x44, "AMD Ryzen 7 9800X3D 8-Core Processor") == \
+        ("Granite Ridge", "Zen 5", "4 nm", 120)
+    assert cpuinfo.lookup("intel", 6, 0xB7, "13th Gen Intel(R) Core(TM) i5-13600KF")[0] == "Raptor Lake"
+    assert cpuinfo.lookup("amd", 0x19, 0x21, "AMD Ryzen 5 5600X 6-Core Processor")[3] == 65
+    assert cpuinfo._microcode(struct.pack("<II", 0, 0x0B404035)) == 0x0B404035
+
+    def cache(level, typ, size, assoc, line=64):
+        body = struct.pack("<BBHII", level, assoc, line, size, typ) + b"\0" * 20 + struct.pack("<QH6x", 1, 0)
+        return struct.pack("<II", 2, 8 + len(body)) + body
+    raw = b"".join([cache(1, 2, 48 * 1024, 12)] * 8 + [cache(1, 1, 32 * 1024, 8)] * 8 +
+                   [cache(2, 0, 1024 ** 2, 16)] * 8 + [cache(3, 0, 96 * 1024 ** 2, 16)])
+    rows = dict(cpuinfo.cache_rows(cpuinfo.parse_caches(raw)))
+    assert rows["L1 Dados"] == "8 × 48 KB · 12-way · linha de 64 bytes"
+    assert rows["L1 Instruções"].startswith("8 × 32 KB")
+    assert rows["L2 Unificado"] == "8 × 1 MB · 16-way · linha de 64 bytes"
+    assert rows["L3 total"] == "96 MB"
+
+
+def test_hwcheck_memory_slots_and_gpu():
+    from lolitos.modules import hwcheck, hwinfo
+    sticks = [{"Capacity": 16 * 1024 ** 3, "Speed": 4800, "ConfiguredClockSpeed": 6000, "PartNumber": "KF560C36-16",
+               "DeviceLocator": f"DIMM_{x}", "BankLabel": f"P0 CHANNEL {x[0]}", "SMBIOSMemoryType": 34}
+              for x in ("A2", "B2")]
+    d = {"ram": sticks, "slots": 4, "cpu": [{"VirtualizationFirmwareEnabled": True, "Manufacturer": "AuthenticAMD"}],
+         "gpu": [{"Name": "NVIDIA GeForce RTX 5070"}],
+         "disks": [{"FriendlyName": "KINGSTON SNV3S1000G", "HealthStatus": "Healthy", "MediaType": "SSD",
+                    "BusType": "NVMe"}]}
+    rs = hwinfo.ram_summary(d)
+    items = hwcheck.run(d, rs, {"name": "NVIDIA GeForce RTX 5070", "pcie_width": 16, "pcie_width_max": 16,
+                                "pcie_gen_max": 5})
+    titles = [i.title for i in items]
+    assert all(i.level == hwcheck.OK for i in items), titles
+    assert "Dual channel ativado" in titles and "Pentes nos slots certos (A2 e B2)" in titles
+    assert any(t.startswith("Memória na frequência máxima (6000 MT/s)") for t in titles)
+    assert "32 GB de RAM" in titles and "NVIDIA GeForce RTX 5070: PCIe 5.0 x16" in titles
+    sticks[1]["DeviceLocator"], sticks[1]["BankLabel"] = "DIMM_A1", "P0 CHANNEL A"
+    sticks[0]["ConfiguredClockSpeed"] = sticks[1]["ConfiguredClockSpeed"] = 4800
+    sticks[0]["Speed"] = sticks[1]["Speed"] = 6000
+    bad = {i.title: i.level for i in hwcheck.run(d, hwinfo.ram_summary(d), None)}
+    assert bad["Pentes no mesmo canal"] == hwcheck.BAD
+    assert any(k.startswith("Memória abaixo") for k in bad)
+    assert hwcheck._slot_pos("Controller0-ChannelB-DIMM1") == "B2"
+    assert hwinfo.board_vendor(r"PCI\VEN_10DE&DEV_2F04&SUBSYS_41191458&REV_A1") == "Gigabyte"
+    assert hwinfo.chipset("PRIME X870-P WIFI") == "X870"
+
+
+def test_fx_levels(monkeypatch):
+    from lolitos.core import settings
+    from lolitos.ui import fx, theme
+    store = {"visual_effects": True, "effects_level": 1}
+    monkeypatch.setattr(settings, "get", lambda k, d=None: store.get(k, d))
+    assert fx.current_from_settings() == fx.BASIC
+    store["visual_effects"] = False
+    assert fx.current_from_settings() == fx.OFF
+    theme.use("blue", True)
+    assert theme.level() == 2 and theme.effects()
+    theme.use("blue", 1)
+    assert theme.level() == 1 and theme.effects()
+    theme.use("blue", 0)
+    assert not theme.effects() and "qradialgradient" not in theme.qss()
+    theme.use("blue", 2)

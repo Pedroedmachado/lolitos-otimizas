@@ -239,21 +239,52 @@ class Toggle(QAbstractButton):
         self.setChecked(checked)
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedSize(44, 24)
+        self._pos = 1.0 if checked else 0.0          # 0 = desligada, 1 = ligada (anima entre os dois)
+        self._anim = None
+        self.toggled.connect(self._slide)
         if on_toggle:
             self.toggled.connect(on_toggle)
+
+    def _slide(self, on: bool):
+        from lolitos.ui import theme
+        end = 1.0 if on else 0.0
+        if self._anim is not None:
+            self._anim.stop()
+        if not theme.effects() or not self.isVisible():
+            self._pos = end
+            self.update()
+            return
+        from PySide6.QtCore import QEasingCurve, QVariantAnimation
+        a = QVariantAnimation(self)
+        a.setDuration(220 if theme.level() >= 2 else 150)
+        a.setStartValue(self._pos)
+        a.setEndValue(end)
+        a.setEasingCurve(QEasingCurve.OutBack if theme.level() >= 2 else QEasingCurve.OutCubic)
+        a.valueChanged.connect(lambda v: (setattr(self, "_pos", float(v)), self.update()))
+        self._anim = a
+        a.start()
+
+    def setChecked(self, on: bool):          # mudanças por código (sem sinal) também mexem a bolinha
+        super().setChecked(on)
+        if self.signalsBlocked():
+            self._pos = 1.0 if on else 0.0
+            self.update()
 
     def paintEvent(self, _):
         from PySide6.QtGui import QPainter
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        on = self.isChecked()
+        t = max(0.0, min(1.0, self._pos))
+        a, b = QColor(C["border2"]), QColor(C["accent"])
+        col = QColor(int(a.red() + (b.red() - a.red()) * t), int(a.green() + (b.green() - a.green()) * t),
+                     int(a.blue() + (b.blue() - a.blue()) * t))
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor(C["accent"] if on else C["border2"]))
+        p.setBrush(col)
         if not self.isEnabled():
             p.setOpacity(0.45)
         p.drawRoundedRect(QRectF(0, 0, 44, 24), 12, 12)
         p.setBrush(QColor("#ffffff"))
-        p.drawEllipse(QRectF(23 if on else 3, 3, 18, 18))
+        p.drawEllipse(QRectF(3 + 20 * self._pos, 3, 18, 18))
 
 
 class StatTile(QFrame):

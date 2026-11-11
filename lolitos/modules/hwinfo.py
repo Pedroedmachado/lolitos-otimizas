@@ -8,13 +8,14 @@ from lolitos.core.system import as_list, powershell_json
 SCRIPT = r"""
 $o = [ordered]@{}
 $o.cpu = Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,L2CacheSize,L3CacheSize,SocketDesignation,Manufacturer,VirtualizationFirmwareEnabled
-$o.ram = Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,Speed,ConfiguredClockSpeed,Manufacturer,PartNumber,BankLabel,DeviceLocator,SMBIOSMemoryType
+$o.ram = Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,Speed,ConfiguredClockSpeed,Manufacturer,PartNumber,BankLabel,DeviceLocator,SMBIOSMemoryType,ConfiguredVoltage,SerialNumber
 $o.slots = (Get-CimInstance Win32_PhysicalMemoryArray | Measure-Object -Property MemoryDevices -Sum).Sum
-$o.board = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product
-$o.bios = Get-CimInstance Win32_BIOS | Select-Object SMBIOSBIOSVersion,@{n='Date';e={$_.ReleaseDate.ToString('dd/MM/yyyy')}}
-$o.gpu = Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate,AdapterRAM
-$o.disks = Get-PhysicalDisk | Select-Object FriendlyName,MediaType,BusType,HealthStatus,@{n='Size';e={[int64]$_.Size}}
-$o.os = Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,@{n='Boot';e={$_.LastBootUpTime.ToString('o')}}
+$o.board = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$o.bios = Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,@{n='Date';e={$_.ReleaseDate.ToString('dd/MM/yyyy')}}
+$o.gpu = Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate,AdapterRAM,AdapterCompatibility,PNPDeviceID,VideoProcessor,@{n='DriverDate';e={if($_.DriverDate){$_.DriverDate.ToString('dd/MM/yyyy')}}}
+$o.vram = @(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0*' -ErrorAction SilentlyContinue | Where-Object { $_.'HardwareInformation.qwMemorySize' } | ForEach-Object { [ordered]@{desc=$_.DriverDesc; bytes=[int64]$_.'HardwareInformation.qwMemorySize'} })
+$o.disks = Get-PhysicalDisk | ForEach-Object { $r = $_ | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue; [ordered]@{FriendlyName=$_.FriendlyName; MediaType=[string]$_.MediaType; BusType=[string]$_.BusType; HealthStatus=[string]$_.HealthStatus; Size=[int64]$_.Size; Temperature=$r.Temperature; Wear=$r.Wear; PowerOnHours=$r.PowerOnHours} }
+$o.os = Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,@{n='Boot';e={$_.LastBootUpTime.ToString('o')}},@{n='Installed';e={$_.InstallDate.ToString('dd/MM/yyyy')}}
 try { $o.secureboot = [bool](Confirm-SecureBootUEFI) } catch { $o.secureboot = $null }
 try { $t = Get-Tpm; $o.tpm = [ordered]@{present=$t.TpmPresent;ready=$t.TpmReady} } catch { $o.tpm = $null }
 try { $o.av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct | Select-Object displayName,productState } catch { $o.av = @() }
@@ -37,7 +38,7 @@ def _speed_from_part(part: str) -> int:
 
 def read_all() -> dict:
     d = powershell_json(SCRIPT, timeout=120) or {}
-    for k in ("cpu", "ram", "gpu", "disks", "av"):
+    for k in ("cpu", "ram", "gpu", "disks", "av", "vram"):
         d[k] = [x for x in as_list(d.get(k)) if x]
     return d
 
@@ -70,3 +71,42 @@ def ram_summary(d: dict) -> dict:
             "kind": kind, "same_model": len(parts) <= 1 and len(sizes) <= 1, "channels": sorted(chans),
             "dual": len(chans) >= 2 if chans else None, "xmp_off": xmp_off, "xmp_on": xmp_on,
             "slots": d.get("slots"), "sticks": sticks}
+
+
+# PCI: código do fabricante da placa (subsistema) → nome
+SUBVENDORS = {
+    "1458": "Gigabyte", "1043": "ASUS", "1462": "MSI", "3842": "EVGA", "19DA": "Zotac", "196E": "PNY",
+    "10DE": "NVIDIA", "1DA2": "Sapphire", "174B": "Sapphire", "1682": "XFX", "148C": "PowerColor",
+    "1849": "ASRock", "1B4C": "Galax / KFA2", "7377": "Colorful", "1569": "Palit", "10B0": "Gainward",
+    "1002": "AMD", "8086": "Intel", "1028": "Dell", "103C": "HP", "17AA": "Lenovo", "1025": "Acer",
+    "1D05": "Tongfang", "152D": "Quanta", "1558": "Clevo", "1179": "Toshiba", "144D": "Samsung", "1B0A": "Pegatron",
+    "17C0": "Wistron", "1E83": "Gunnir", "1ACC": "Point of View", "1642": "Bitland", "16F3": "Jetway",
+}
+
+
+def board_vendor(pnp: str) -> str:
+    """'PCI\\VEN_10DE&DEV_2F04&SUBSYS_41191458&REV_A1\\…' → 'Gigabyte'."""
+    m = re.search(r"SUBSYS_[0-9A-F]{4}([0-9A-F]{4})", (pnp or "").upper())
+    return SUBVENDORS.get(m.group(1), "") if m else ""
+
+
+def gpu_vendor(v: dict) -> str:
+    txt = f"{v.get('AdapterCompatibility', '')} {v.get('Name', '')}".upper()
+    for k, name in (("NVIDIA", "NVIDIA"), ("AMD", "AMD"), ("ADVANCED MICRO", "AMD"), ("INTEL", "Intel")):
+        if k in txt:
+            return name
+    return (v.get("AdapterCompatibility") or "").strip()
+
+
+def vram_bytes(d: dict, v: dict) -> int:
+    """AdapterRAM para em 4 GB; o registro do driver guarda o valor real."""
+    for x in d.get("vram", []):
+        if (x.get("desc") or "").strip() == (v.get("Name") or "").strip() and x.get("bytes"):
+            return int(x["bytes"])
+    return int(v.get("AdapterRAM") or 0)
+
+
+def chipset(board_product: str) -> str:
+    """Pelo nome da placa: 'PRIME X870-P' → 'X870', 'B550M AORUS' → 'B550', 'Z790-A' → 'Z790'."""
+    m = re.search(r"(?<![A-Z0-9])([ABHXZQW]\d{3})[EM]?(?![0-9])", (board_product or "").upper())
+    return m.group(1) if m else ""

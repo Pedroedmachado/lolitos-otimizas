@@ -22,8 +22,24 @@ class Speedometer(QWidget):
         self.setMinimumSize(300, 230)
 
     def set(self, v: float):
-        self.value = max(0.0, min(100.0, v))
-        self.update()
+        v = max(0.0, min(100.0, v))
+        from lolitos.ui import theme
+        if not theme.effects() or not self.isVisible() or abs(v - self.value) < 0.5:
+            self.value = v
+            self.update()
+            return
+        from PySide6.QtCore import QEasingCurve, QVariantAnimation
+        old = getattr(self, "_anim", None)
+        if old is not None:
+            old.stop()
+        a = QVariantAnimation(self)
+        a.setDuration(1100 if theme.level() >= 2 else 600)
+        a.setStartValue(self.value)
+        a.setEndValue(v)
+        a.setEasingCurve(QEasingCurve.OutCubic)
+        a.valueChanged.connect(lambda x: (setattr(self, "value", float(x)), self.update()))
+        self._anim = a
+        a.start()
 
     def paintEvent(self, _):
         p = QPainter(self)

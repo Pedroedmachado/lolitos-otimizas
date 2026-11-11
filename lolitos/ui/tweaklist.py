@@ -45,21 +45,25 @@ def confirm_advanced(parent, t) -> bool:
 
 
 class TweakList(QWidget):
-    def __init__(self, tweaks, parent_page, search: bool = True, bulk: bool = True):
+    def __init__(self, tweaks, parent_page, search: bool = True, bulk: bool = True, bar: bool = True,
+                 on_selection=None, on_states=None):
         super().__init__()
         self.page = parent_page
         self.tweaks = tweaks
         self.rows: dict[str, TweakRow] = {}
+        self.states: dict[str, str] = {}
+        self.on_selection = on_selection or (lambda: None)
+        self.on_states = on_states or (lambda: None)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(8)
-        bar = []
+        show_bar, bar = bar, []
         if search:
             self.q = QLineEdit()
             self.q.setPlaceholderText("Buscar ajuste por nome ou descrição…")
             self.q.textChanged.connect(self._filter)
             bar.append(self.q)
-        if bulk:
+        if bulk and show_bar:
             bar += [button("Marcar recomendados", on_click=self._mark_rec),
                     button("Aplicar selecionados", "primary", self._apply_selected)]
         if bar:
@@ -68,6 +72,7 @@ class TweakList(QWidget):
         lay.addWidget(self.summary)
         for t in tweaks:
             r = TweakRow(t, self._toggle, selectable=bulk)
+            r.chk.toggled.connect(lambda _=False: self.on_selection())
             self.rows[t.id] = r
             lay.addWidget(r)
         self.refresh()
@@ -85,7 +90,27 @@ class TweakList(QWidget):
                 row.set_state(s, tid in blocked)
                 on += s == "on"
         valid = sum(1 for s in st.values() if s != "na")
+        self.states = dict(st)
         self.summary.setText(f"{on} de {valid} ativos neste PC.")
+        self.on_states()
+
+    # ---------------------------------------------------------------- seleção (usada por telas com várias listas)
+    def set_all(self, checked: bool, only_pending: bool = True):
+        for r in self.rows.values():
+            if r.chk.isEnabled() and (r.state not in ("on", "na") or not only_pending):
+                r.chk.setChecked(checked)
+
+    def mark_defaults(self):
+        """Marca o que ainda não está aplicado, menos os itens avançados (como o Debloat do vídeo)."""
+        for r in self.rows.values():
+            if r.chk.isEnabled():
+                r.chk.setChecked(r.t.level != ADVANCED and r.state in ("off", "partial"))
+
+    def selected(self):
+        return [r.t for r in self.rows.values() if r.chk.isChecked() and r.chk.isEnabled()]
+
+    def pending(self) -> int:
+        return sum(1 for s in self.states.values() if s in ("off", "partial"))
 
     def _filter(self, text):
         text = text.lower().strip()

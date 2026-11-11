@@ -64,8 +64,11 @@ def main() -> int:
         if settings.get("theme") == "dark":
             settings.set("theme", "blue")
         settings.set("theme_v2", True)
-    theme.use(settings.get("theme"), settings.get("visual_effects", True))
+    from lolitos.ui.fx import current_from_settings as _fx_level
+    theme.use(settings.get("theme"), _fx_level())
     app.setStyleSheet(theme.qss())
+    from lolitos.ui import fx
+    fx.install(app)
     w = MainWindow()
     if "--tray" not in sys.argv:
         w.show()

@@ -31,9 +31,16 @@ class SettingsPage(Page):
         self.theme_cb.setCurrentIndex(keys.index(settings.get("theme")) if settings.get("theme") in keys else 2)
         self.theme_cb.currentIndexChanged.connect(lambda _: self.main.set_theme(self.theme_cb.currentData()))
         c.lay.addLayout(hrow(label("Tema", wrap=False), self.theme_cb, None))
-        fx = QCheckBox("Efeitos visuais: vidro e animações (desligue em PCs mais fracos)")
-        fx.setChecked(settings.get("visual_effects", True))
-        fx.toggled.connect(lambda v: (settings.set("visual_effects", v), self.main.apply_theme()))
+        from lolitos.ui import fx as _fx
+        self.fx_cb = QComboBox()
+        for lv, name in _fx.LEVELS:
+            self.fx_cb.addItem(name, lv)
+        self.fx_cb.setCurrentIndex(_fx.current_from_settings())
+        self.fx_cb.currentIndexChanged.connect(lambda _: self.main.set_effects(self.fx_cb.currentData()))
+        c.lay.addLayout(hrow(label("Efeitos visuais", wrap=False), self.fx_cb, None))
+        c.lay.addWidget(label("Básicos: vidro, telas esmaecendo, chaves deslizando e brilho nos botões. Completos: "
+                              "também onda ao clicar, reflexo nos botões principais, luz que segue o mouse, cartões "
+                              "que levantam e telas que entram deslizando. Em PC fraco, use Desligados.", "muted"))
         tray = QCheckBox("Ao fechar a janela, continuar na bandeja (o overlay e a tecla continuam funcionando)")
         tray.setChecked(settings.get("tray_on_close"))
         tray.toggled.connect(lambda v: settings.set("tray_on_close", v))
@@ -53,7 +60,7 @@ class SettingsPage(Page):
         upd = QCheckBox("Procurar atualização no GitHub ao abrir o app")
         upd.setChecked(settings.get("check_updates", True))
         upd.toggled.connect(lambda v: settings.set("check_updates", v))
-        for w in (fx, tray, rp, auto, free, plan, upd):
+        for w in (tray, rp, auto, free, plan, upd):
             c.lay.addWidget(w)
         c.lay.addLayout(hrow(button("Abrir pasta de dados", on_click=lambda: os.startfile(str(data_dir()))), None))
         self.body.addWidget(c)

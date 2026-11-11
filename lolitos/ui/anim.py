@@ -16,11 +16,25 @@ def fade_in(w: QWidget, ms: int = 200) -> None:
     eff = QGraphicsOpacityEffect(w)
     eff.setOpacity(0.0)
     w.setGraphicsEffect(eff)
+    full = theme.level() >= 2
+    ms = int(ms * 1.3) if full else ms
     a = QPropertyAnimation(eff, b"opacity", w)
     a.setDuration(ms)
     a.setStartValue(0.0)
     a.setEndValue(1.0)
     a.setEasingCurve(QEasingCurve.OutCubic)
+    slide = None
+    if full:                       # nível Completo: a tela também entra deslizando de baixo
+        x, y = w.x(), w.y()
+        slide = QVariantAnimation(w)
+        slide.setDuration(ms)
+        slide.setStartValue(18)
+        slide.setEndValue(0)
+        slide.setEasingCurve(QEasingCurve.OutCubic)
+        slide.valueChanged.connect(lambda v: w.move(x, y + int(v)))
+        _RUNNING.add(slide)
+        slide.finished.connect(lambda: _RUNNING.discard(slide))
+        slide.start()
 
     def end():
         _RUNNING.discard(a)
