@@ -66,6 +66,33 @@ def acts(t):
     return rows
 
 
+def force_off(t):
+    from lolitos.core.system import run
+    try:
+        for a in t.actions:
+            k = type(a).__name__
+            if not a.applicable():
+                continue
+            if k == "Reg":
+                if a.delete:
+                    reg.write(a.hive, a.path, a.name, "sz", "x")
+                else:
+                    reg.delete_value(a.hive, a.path, a.name)
+            elif k == "Service":
+                if not run(["sc.exe", "config", a.name, "start=", "auto"]).ok:
+                    return False, f"sc config {a.name} recusado"
+            elif k == "Power":
+                other = 50 if a.value == 100 else (1 if a.value == 0 else 0)
+                a._set(other, other)
+            elif k == "Task":
+                a._set(not a.enabled)
+            else:
+                return False, f"sem teste forçado para {k}"
+        return True, ""
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {e}"
+
+
 def main():
     print("WINVER", sys.getwindowsversion(), flush=True)
     for t in CATALOG.values():
@@ -85,9 +112,17 @@ def main():
             print("TW " + json.dumps(r, ensure_ascii=False), flush=True)
             continue
         if r["before"] == "on":
-            r["result"] = "already_on"
-            print("TW " + json.dumps(r, ensure_ascii=False), flush=True)
-            continue
+            # já vem assim neste Windows: põe no estado contrário à força para poder testar aplicar e desfazer
+            forced, why = force_off(t)
+            r["forced"] = forced
+            st, _ = with_timeout(t.status, 120)
+            if not forced or st == "on":
+                r["result"] = "already_on"
+                r["why"] = why or f"continuou {st}"
+                print("TW " + json.dumps(r, ensure_ascii=False), flush=True)
+                continue
+            r["before"] = st
+            raw0 = raw(t)
         res, err = with_timeout(lambda: engine.apply_tweak(t))
         r["apply_ok"] = bool(res and res.ok)
         r["apply_msg"] = (res.msg if res else "") or err

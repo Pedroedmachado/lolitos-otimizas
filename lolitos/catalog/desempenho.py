@@ -1,7 +1,7 @@
 """Desempenho do Windows, jogos e energia."""
 from lolitos import POWER_PLAN_NAME
 from lolitos.core.actions import Cmd, Power, PowerPlan, Reg, Service, regs
-from lolitos.core.system import is_laptop, ram_gb
+from lolitos.core.system import hibernation_supported, is_laptop, ram_gb
 from lolitos.core.tweaks import ADVANCED, ESSENTIAL, RECOMMENDED, Tweak, register
 from lolitos.modules import pcprofile as pc
 
@@ -38,7 +38,8 @@ register(
     Tweak("hibernation_off", "Desligar a hibernação",
           "Apaga o hiberfil.sys (libera vários GB) e desliga junto a Inicialização Rápida.",
           "desempenho", [Cmd(["powercfg", "/h", "off"], ["powercfg", "/h", "on"],
-                             check=lambda: Reg(HKLM, r"SYSTEM\CurrentControlSet\Control\Power", "HibernateEnabled", 0).is_applied())],
+                             check=lambda: Reg(HKLM, r"SYSTEM\CurrentControlSet\Control\Power", "HibernateEnabled", 0).is_applied(),
+                             applicable=hibernation_supported)],
           RECOMMENDED, gain="Espaço em disco e desligamento completo.",
           loss="Some a opção Hibernar (ruim em notebook).", when=desktop),
     Tweak("fast_startup_off", "Desligar a Inicialização Rápida",

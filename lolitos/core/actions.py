@@ -412,11 +412,21 @@ class Cmd(Action):
 
     def __init__(self, apply: str | list, revert: str | list | None = None, *,
                  check: Callable[[], bool | None] | None = None, ps_check: str | None = None,
-                 ps: bool = False, label: str = "", timeout: int = 600):
+                 ps: bool = False, label: str = "", timeout: int = 600,
+                 applicable: Callable[[], bool] | None = None):
         self.apply_cmd, self.revert_cmd = apply, revert
         self.check, self.ps_check, self.ps = check, ps_check, ps
         self.label, self.timeout = label, timeout
         self.reversible = revert is not None
+        self._applicable = applicable
+
+    def applicable(self):
+        if self._applicable is None:
+            return True
+        try:
+            return bool(self._applicable())
+        except Exception:  # noqa: BLE001
+            return True
 
     def describe(self):
         return self.label or (self.apply_cmd if isinstance(self.apply_cmd, str) else " ".join(self.apply_cmd))

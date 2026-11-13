@@ -310,6 +310,21 @@ def windows_build() -> int:
     return sys.getwindowsversion().build
 
 
+@lru_cache(maxsize=1)
+def hibernation_supported() -> bool:
+    """O hardware/firmware aceita hibernar (estado S4)? Máquinas virtuais e alguns PCs não aceitam: neles o
+    'powercfg /h on' falha, então o ajuste de hibernação não se aplica."""
+    if not IS_WIN:
+        return True
+    try:
+        buf = (ctypes.c_ubyte * 128)()          # SYSTEM_POWER_CAPABILITIES: o 7º byte é SystemS4
+        if not ctypes.windll.powrprof.GetPwrCapabilities(ctypes.byref(buf)):
+            return True
+        return bool(buf[6])
+    except Exception:
+        return True
+
+
 def is_win11() -> bool:
     return windows_build() >= 22000
 
