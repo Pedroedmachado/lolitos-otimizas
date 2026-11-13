@@ -107,6 +107,7 @@ class FpsReader(threading.Thread):
         self.last_line = 0.0
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        self.taps: list = []        # funções (pid, nome, t, ms) chamadas a cada quadro (ex.: medição antes/depois)
 
     def run(self):
         exe = find_presentmon()
@@ -159,6 +160,11 @@ class FpsReader(threading.Thread):
                 with self._lock:
                     self.frames[pid].append((now, ms))
                     self.names[pid] = row[c_app]
+                for tap in list(self.taps):
+                    try:
+                        tap(pid, row[c_app], now, ms)
+                    except Exception:  # noqa: BLE001
+                        pass
         if self.proc:
             try:
                 self.proc.wait(timeout=5)
@@ -213,3 +219,36 @@ class FpsReader(threading.Thread):
         self._stop.set()
         if self.proc and self.proc.poll() is None:
             self.proc.terminate()
+
+
+# ---------------------------------------------------------------- leitor compartilhado
+# O PresentMon só aceita uma sessão com o mesmo nome: overlay e medição usam o MESMO leitor. Ele liga quando o
+# primeiro pede e desliga quando o último solta.
+_SHARED: dict = {"reader": None, "users": set(), "started": 0.0}
+_SHARED_LOCK = threading.Lock()
+
+
+def acquire(user: str) -> FpsReader | None:
+    """Leitor de FPS para `user`. Se o PresentMon caiu, tenta de novo (no máximo a cada 20 s).
+    None = PresentMon não encontrado."""
+    with _SHARED_LOCK:
+        _SHARED["users"].add(user)
+        r = _SHARED["reader"]
+        if r is not None and (r.is_alive() or time.time() - _SHARED["started"] < 20):
+            return r
+        if not find_presentmon():
+            return r
+        new = FpsReader()
+        if r is not None:
+            new.taps = list(r.taps)          # quem estava gravando continua gravando no leitor novo
+        _SHARED.update(reader=new, started=time.time())
+        new.start()
+        return new
+
+
+def release(user: str) -> None:
+    with _SHARED_LOCK:
+        _SHARED["users"].discard(user)
+        if not _SHARED["users"] and _SHARED["reader"] is not None:
+            _SHARED["reader"].stop()
+            _SHARED["reader"] = None

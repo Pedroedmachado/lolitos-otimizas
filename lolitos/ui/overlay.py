@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ctypes
-import time
 
 import psutil
 from PySide6.QtCore import Qt, QTimer
@@ -58,7 +57,8 @@ class Overlay(QWidget):
         self.timer.stop()
         self.slow.stop()
         if self.fps_reader:
-            self.fps_reader.stop()
+            from lolitos.modules import fps
+            fps.release("overlay")           # só desliga o PresentMon se ninguém mais (medição) estiver usando
             self.fps_reader = None
 
     # ---------------------------------------------------------------- dados
@@ -74,17 +74,10 @@ class Overlay(QWidget):
 
     def _ensure_fps(self):
         """Uma medição para todos os processos; se cair (PresentMon fechou, erro), tenta de novo a cada 20 s."""
-        from lolitos.modules.fps import FpsReader, find_presentmon
-        r = self.fps_reader
-        if r is not None and r.is_alive():
-            return
-        if r is not None and time.time() - getattr(self, "_fps_started", 0) < 20:
-            return
-        if not find_presentmon():
-            return
-        self.fps_reader = FpsReader()
-        self._fps_started = time.time()
-        self.fps_reader.start()
+        from lolitos.modules import fps
+        self.fps_reader = fps.acquire("overlay")
+        if self.fps_reader is None:
+            fps.release("overlay")
 
     @staticmethod
     def _running_game_exe() -> str:
