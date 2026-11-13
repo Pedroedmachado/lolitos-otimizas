@@ -36,9 +36,10 @@ register(
           "rede", [Reg(HKLM, MM, "NetworkThrottlingIndex", 0xFFFFFFFF)], ESSENTIAL,
           gain="O jogo não perde vazão de rede porque o Discord está tocando áudio."),
     Tweak("nagle_off", "Pacotes TCP sem espera (Nagle desligado)",
-          "TcpAckFrequency=1 nas interfaces de rede: o Windows confirma cada pacote na hora, sem esperar "
-          "juntar dois (ACK atrasado). O BDO usa TCP, então isso conta.",
-          "rede", [Interfaces("TcpAckFrequency", 1)],
+          "TcpAckFrequency=1 e TCPNoDelay=1 nas interfaces de rede: o Windows confirma cada pacote na hora, sem "
+          "esperar juntar dois (ACK atrasado), e envia pacotes pequenos sem segurar (algoritmo de Nagle). O BDO "
+          "usa TCP, então isso conta.",
+          "rede", [Interfaces("TcpAckFrequency", 1), Interfaces("TCPNoDelay", 1)],
           RECOMMENDED, restart=True, gain="Ações e respostas do servidor chegam sem atraso artificial.",
           loss="Um pouco mais de pacotes na rede; irrelevante para internet doméstica."),
     Tweak("wifi_max", "Wi-Fi sem economia de energia",

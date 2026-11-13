@@ -1019,3 +1019,37 @@ def test_system_tools_use_full_path():
         assert system.system_tool("powershell.exe").lower().endswith(r"\powershell.exe") and \
             os.path.isabs(system.system_tool("powershell.exe"))
         assert system.system_tool("winget") == "winget"
+
+
+# ---------------------------------------------------------------- 2.5.3: verificação dos ajustes
+def test_input_tweaks_take_effect_without_relogin():
+    """Mouse/teclado ficam em HKCU\\Control Panel, que o Windows só lê no login: o app repassa na hora."""
+    from lolitos.catalog import LIVE_INPUT
+    from lolitos.core import live
+    assert all(CATALOG[i].live is live.sync_input for i in LIVE_INPUT)
+    if not IS_WIN:
+        reg.write("HKCU", live.MOUSE, "MouseSpeed", "sz", "0")
+        reg.write("HKCU", live.MOUSE, "MouseThreshold1", "sz", "0")
+        reg.write("HKCU", live.MOUSE, "MouseThreshold2", "sz", "0")
+        reg.write("HKCU", live.KEYB, "KeyboardSpeed", "sz", "31")
+        reg.write("HKCU", live.KEYB, "KeyboardDelay", "sz", "9")          # fora da faixa: ignorado
+        p = {n: v for n, _c, v in live.plan()}
+        assert p["mouse"] == (0, 0, 0) and p["key_speed"] == 31 and "key_delay" not in p
+        live.sync_input()                                                 # fora do Windows não faz nada
+        return
+    t = CATALOG["mouse_accel_off"]
+    before = live.mouse_now()
+    if t.status() == "on":                 # máquina já sem aceleração: liga para poder testar
+        for n, v in (("MouseSpeed", "1"), ("MouseThreshold1", "6"), ("MouseThreshold2", "10")):
+            reg.write("HKCU", live.MOUSE, n, "sz", v)
+        live.sync_input()
+        before = live.mouse_now()
+    assert before is not None and before != (0, 0, 0)
+    assert engine.apply_tweak(t).ok and live.mouse_now() == (0, 0, 0)      # já vale, sem sair da conta
+    assert engine.undo_tweak(t)[0] and live.mouse_now() == before
+
+
+def test_nagle_sets_both_values():
+    from lolitos.core.actions import Interfaces
+    names = [a.name for a in CATALOG["nagle_off"].actions if isinstance(a, Interfaces)]
+    assert names == ["TcpAckFrequency", "TCPNoDelay"]

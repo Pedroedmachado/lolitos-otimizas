@@ -46,6 +46,7 @@ class Tweak:
     exclusive: str = ""       # grupo de ajustes mutuamente exclusivos
     when: Callable[[], bool] | None = None   # recomendado só se True (ex.: PC sem bateria)
     tags: tuple[str, ...] = field(default_factory=tuple)
+    live: Callable[[], None] | None = None   # chamado depois de aplicar/desfazer, para valer sem novo login
 
     # ---------------------------------------------------------------- estado
     def applicable(self) -> bool:

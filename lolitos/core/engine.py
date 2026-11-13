@@ -48,10 +48,20 @@ def apply_tweak(t: Tweak, progress: Progress | None = None) -> ApplyResult:
         history.set_blocked(t.id)
     if t.explorer and applied:
         restart_explorer()
+    if applied:
+        _live(t)
     msg = "; ".join(errors) if errors else ("reinicie o PC para valer" if t.restart else "")
     if errors:
         say(f"   não aplicado por completo: {msg}")
     return ApplyResult(t, ok, msg, blocked)
+
+
+def _live(t: Tweak) -> None:
+    if t.live:
+        try:
+            t.live()
+        except Exception:  # noqa: BLE001
+            log.exception("live %s", t.id)
 
 
 def undo_entry(entry: dict, progress: Progress | None = None) -> tuple[bool, str]:
@@ -74,6 +84,7 @@ def undo_entry(entry: dict, progress: Progress | None = None) -> tuple[bool, str
     history.set_blocked(t.id, False)
     if t.explorer:
         restart_explorer()
+    _live(t)
     return not errors, "; ".join(errors)
 
 
