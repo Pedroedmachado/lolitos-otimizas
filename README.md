@@ -48,6 +48,31 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.5.2
+
+Revisão de segurança e de robustez. Nada muda na aparência.
+
+* **Atualização automática mais segura:**
+  * o instalador baixado fica na pasta do próprio app (Arquivos de Programas), que só administradores alteram,
+    em vez da pasta Temp;
+  * ele é conferido pelo SHA-256 no download e de novo no instante de executar;
+  * sem SHA-256 publicado pelo GitHub, o app não instala sozinho;
+  * instaladores de atualizações antigas são apagados ao abrir o app.
+* **Programas auxiliares conferidos:** o PresentMon (FPS do overlay) fora da pasta do app só roda se o arquivo
+  conferir com o SHA-256 da versão fixada. O gravador de clipes (ffmpeg) passa a ser instalado para todos os
+  usuários, em Arquivos de Programas, quando possível.
+* **Ferramentas do Windows pelo caminho completo:** `reg`, `sc`, `powercfg`, `schtasks`, `powershell` e as demais
+  são chamadas direto da System32. Um arquivo com o mesmo nome em outra pasta não entra no lugar.
+* **Limpeza não segue atalhos de pasta:** links simbólicos e junções dentro da Temp são removidos como atalho, sem
+  tocar no destino.
+* **Desfazer mais rígido:** o Desfazer só mexe nas chaves do próprio ajuste e só importa backups `.reg` criados
+  pelo app, mesmo que o arquivo de histórico tenha sido alterado por fora.
+* **Arquivos do app não corrompem:** configurações, histórico e bloqueados são gravados por troca atômica. Se o
+  histórico ficar ilegível, o app guarda uma cópia (`historico-ilegivel-…json`) em vez de apagar.
+* **Mais leve:** o histórico só é relido do disco quando muda (antes era relido a cada ajuste mostrado na tela).
+* **Registro de erros:** erros não tratados agora vão para o `lolitos.log`, que passou a ter tamanho limitado
+  (1 MB e dois arquivos antigos).
+
 ## Novidades da 2.5.1
 
 * **Debloat em tabela:** cada item é uma linha com as colunas Nível, Ajuste, O que faz, Estado e Desfazer.

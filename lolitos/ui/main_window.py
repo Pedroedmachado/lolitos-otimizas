@@ -413,7 +413,8 @@ class MainWindow(QMainWindow):
         import webbrowser
         from lolitos.modules import updater
         from lolitos.ui.widgets import TaskDialog, confirm, info
-        notes = inf["notes"][:1200].replace("\n", "<br>") if inf["notes"] else ""
+        import html
+        notes = html.escape(inf["notes"][:1200]).replace("\n", "<br>") if inf["notes"] else ""
         if not updater.can_self_update():
             if confirm(self, "Atualização", f"Versão <b>{inf['version']}</b> disponível.<br><br>Esta cópia roda "
                        "direto do código, então a atualização automática não se aplica. Abrir a página de "
@@ -437,13 +438,17 @@ class MainWindow(QMainWindow):
                     progress(f"Baixando… {p}%")
             progress(f"Baixando {inf['name']} do GitHub…")
             path = updater.download(inf, pct)
-            progress("Download conferido (tamanho" + (" e SHA-256" if inf["sha256"] else "") + ").")
+            progress("Download conferido (tamanho e SHA-256).")
             return str(path)
 
         def done(path):
             if not path:
                 return
-            updater.install_and_restart(Path(path))
+            try:
+                updater.install_and_restart(Path(path), inf.get("sha256", ""))
+            except (OSError, RuntimeError) as e:
+                info(self, "Atualização", str(e))
+                return
             self.quit()
 
         dlg = TaskDialog(self, "Atualizando o Chinese Control", work, on_done=done)

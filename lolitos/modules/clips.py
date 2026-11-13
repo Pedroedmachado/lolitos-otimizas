@@ -61,8 +61,12 @@ def tools_dir() -> Path:
 
 
 def find_ffmpeg() -> Path | None:
-    cands = [tools_dir() / "ffmpeg.exe",
-             Path(os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe"))]
+    # primeiro a instalação para todos os usuários (Arquivos de Programas: só administradores alteram)
+    cands = [Path(os.path.expandvars(r"%ProgramFiles%\WinGet\Links\ffmpeg.exe"))]
+    pkgs = os.path.expandvars(r"%ProgramFiles%\WinGet\Packages")
+    cands += [Path(p) for p in glob.glob(pkgs + r"\Gyan.FFmpeg*\*\bin\ffmpeg.exe")]
+    cands += [tools_dir() / "ffmpeg.exe",
+              Path(os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe"))]
     pkgs = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Packages")
     cands += [Path(p) for p in glob.glob(pkgs + r"\Gyan.FFmpeg*\*\bin\ffmpeg.exe")]
     w = shutil.which("ffmpeg")
@@ -89,9 +93,15 @@ def install_ffmpeg(progress=None) -> Path:
         raise RuntimeError("O winget (Instalador de Aplicativo da Microsoft Store) não está disponível neste "
                            "Windows. Instale-o pela Microsoft Store e tente de novo.")
     say("Baixando o gravador (ffmpeg, ~90 MB) pelo winget…")
-    r = run(["winget", "install", "--id", WINGET_ID, "-e", "--silent", "--scope", "user",
-             "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], timeout=900)
-    exe = find_ffmpeg()
+    from lolitos.core.system import is_admin
+    exe = None
+    for scope in (("machine", "user") if is_admin() else ("user",)):   # de preferência em Arquivos de Programas
+        r = run(["winget", "install", "--id", WINGET_ID, "-e", "--silent", "--scope", scope,
+                 "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"],
+                timeout=900)
+        exe = find_ffmpeg()
+        if exe:
+            break
     if not exe:
         raise RuntimeError("O winget não conseguiu instalar o ffmpeg: " + (r.err or r.out).strip()[-300:])
     if not has_ddagrab(exe):

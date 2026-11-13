@@ -30,19 +30,34 @@ IGNORE = {"dwm.exe", "explorer.exe", "lolitoscontrol.exe", "python.exe", "python
           "systemsettings.exe", "lockapp.exe", "<unknown>", "<error>"}
 
 
+def _trusted(p: Path) -> bool:
+    """Fora da pasta do app, só roda o PresentMon que confere com o SHA-256 da versão fixada. Ele é aberto como
+    administrador, e essas pastas (dados do app, PATH) podem ser alteradas por qualquer programa."""
+    try:
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest() == PM_SHA256
+    except OSError:
+        return False
+
+
 def find_presentmon() -> Path | None:
-    """Ordem: o que veio no instalador, o que o app baixou, o que estiver no PATH."""
-    dirs = []
+    """Ordem: o que veio no instalador, o que o app baixou, o que estiver no PATH (os dois últimos, conferidos)."""
     if getattr(sys, "frozen", False):
-        dirs.append(Path(sys.executable).parent / "tools")
+        for p in sorted((Path(sys.executable).parent / "tools").glob("PresentMon*.exe"), reverse=True):
+            return p
     tools = data_dir() / "tools"
     tools.mkdir(exist_ok=True)
-    dirs.append(tools)
-    for d in dirs:
-        for p in sorted(d.glob("PresentMon*.exe"), reverse=True):
-            return p
+    cands = sorted(tools.glob("PresentMon*.exe"), reverse=True)
     w = shutil.which("PresentMon") or shutil.which("PresentMon.exe")
-    return Path(w) if w else None
+    if w:
+        cands.append(Path(w))
+    for p in cands:
+        if _trusted(p):
+            return p
+    return None
 
 
 def download_presentmon(dst: Path | None = None, progress=None) -> Path:

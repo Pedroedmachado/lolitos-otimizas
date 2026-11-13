@@ -69,13 +69,24 @@ TARGETS = [
 TARGETS_BY_ID = {t.id: t for t in TARGETS}
 
 
+def _is_link(path: Path) -> bool:
+    """Link simbólico ou junção (atalho de pasta do Windows). A limpeza roda como administrador: nunca segue um
+    link, senão um atalho plantado na pasta Temp faria o app apagar o que está em outro lugar."""
+    try:
+        if path.is_symlink() or getattr(os.path, "isjunction", lambda _p: False)(path):
+            return True
+        return bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)   # FILE_ATTRIBUTE_REPARSE_POINT
+    except OSError:
+        return False
+
+
 def _files(t: Target):
     now = time.time()
     for pat in t.patterns:
         for p in glob.glob(expand(pat)):
             path = Path(p)
             try:
-                if path.is_symlink():
+                if _is_link(path):
                     yield path, 0, False
                     continue
                 if path.is_file():
@@ -118,8 +129,11 @@ def clean(t: Target, dry_run: bool = False) -> tuple[int, int, int]:
                 freed += size
                 continue
             try:
-                if path.is_symlink():
-                    path.unlink()        # remove o link, nunca o destino
+                if _is_link(path):       # remove o link, nunca o destino
+                    try:
+                        path.unlink()
+                    except OSError:
+                        os.rmdir(path)
                 elif is_dir:
                     shutil.rmtree(path)
                 else:

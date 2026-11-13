@@ -3,7 +3,10 @@
 Segurança:
 - só consulta o repositório oficial e só aceita o instalador com o nome esperado;
 - só baixa por HTTPS de domínios do GitHub;
-- confere o tamanho e o SHA-256 informados pela API do GitHub antes de executar."""
+- confere o tamanho e o SHA-256 informados pela API do GitHub antes de executar (sem SHA-256 publicado, não
+  instala sozinho);
+- o instalador fica numa pasta que só administradores alteram (a do próprio app, em Arquivos de Programas) e é
+  conferido de novo no instante de executar: nenhum outro programa consegue trocar o arquivo no meio do caminho."""
 from __future__ import annotations
 
 import hashlib
@@ -96,42 +99,101 @@ def download(info: dict, progress=None) -> Path:
     return _retry(_download, info, progress)
 
 
+def update_dir() -> Path:
+    """Onde o instalador baixado fica. O app roda como administrador, então o arquivo não pode ficar em pasta
+    que programas comuns alteram (como %TEMP%): fica na pasta do app, protegida pelo Windows."""
+    if getattr(sys, "frozen", False):
+        d = Path(sys.executable).parent / "update"
+        try:
+            d.mkdir(exist_ok=True)
+            probe = d / ".w"
+            probe.write_bytes(b"")
+            probe.unlink()
+            return d
+        except OSError:
+            pass
+    d = Path(tempfile.gettempdir()) / f"{APP_ID}-update"
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def _clean_old(folder: Path, keep: str = "") -> None:
+    for f in folder.glob("*-Setup.exe*"):
+        if f.name != keep:
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+def cleanup_leftovers() -> None:
+    """Ao abrir o app: apaga instaladores de atualizações já feitas (na pasta do app e na pasta antiga do %TEMP%)."""
+    import shutil
+    try:
+        _clean_old(update_dir())
+    except OSError:
+        pass
+    shutil.rmtree(Path(tempfile.gettempdir()) / f"{APP_ID}-update", ignore_errors=True)
+
+
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest().lower()
+
+
 def _download(info: dict, progress=None) -> Path:
     if not _host_ok(info["url"]):
         raise RuntimeError("Endereço de download inesperado; atualização cancelada.")
     if info["size"] <= 0 or info["size"] > MAX_SIZE:
         raise RuntimeError("Tamanho do instalador inesperado; atualização cancelada.")
-    folder = Path(tempfile.gettempdir()) / f"{APP_ID}-update"
-    folder.mkdir(exist_ok=True)
+    if not re.fullmatch(r"[0-9a-f]{64}", info.get("sha256") or ""):
+        raise RuntimeError("O GitHub não informou o SHA-256 deste instalador, então ele não é instalado "
+                           "automaticamente. Baixe pela página de versões.")
+    if not ASSET_RE.match(info.get("name", "")):
+        raise RuntimeError("Nome de instalador inesperado; atualização cancelada.")
+    folder = update_dir()
+    _clean_old(folder)
     dst = folder / info["name"]
+    part = folder / (info["name"] + ".part")
     h = hashlib.sha256()
     got = 0
     req = urllib.request.Request(info["url"], headers={"User-Agent": UA["User-Agent"]})
-    with urllib.request.urlopen(req, timeout=30) as r, open(dst, "wb") as f:
-        if not _host_ok(r.geturl()):
-            raise RuntimeError("Redirecionamento inesperado; atualização cancelada.")
-        while True:
-            chunk = r.read(256 * 1024)
-            if not chunk:
-                break
-            got += len(chunk)
-            if got > MAX_SIZE:
-                raise RuntimeError("Download maior do que o esperado; cancelado.")
-            h.update(chunk)
-            f.write(chunk)
-            if progress:
-                progress(got * 100 // info["size"])
-    if got != info["size"]:
-        dst.unlink(missing_ok=True)
-        raise RuntimeError("O download veio incompleto. Tente de novo.")
-    if info["sha256"] and h.hexdigest().lower() != info["sha256"]:
-        dst.unlink(missing_ok=True)
-        raise RuntimeError("O arquivo baixado não confere com o SHA-256 publicado. Nada foi instalado.")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r, open(part, "wb") as f:
+            if not _host_ok(r.geturl()):
+                raise RuntimeError("Redirecionamento inesperado; atualização cancelada.")
+            while True:
+                chunk = r.read(256 * 1024)
+                if not chunk:
+                    break
+                got += len(chunk)
+                if got > MAX_SIZE or got > info["size"]:
+                    raise RuntimeError("Download maior do que o esperado; cancelado.")
+                h.update(chunk)
+                f.write(chunk)
+                if progress:
+                    progress(got * 100 // info["size"])
+        if got != info["size"]:
+            raise ConnectionError("O download veio incompleto. Tente de novo.")
+        if h.hexdigest().lower() != info["sha256"]:
+            raise RuntimeError("O arquivo baixado não confere com o SHA-256 publicado. Nada foi instalado.")
+        part.replace(dst)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
     return dst
 
 
-def install_and_restart(installer: Path) -> None:
-    """Roda o instalador sem janelas; ele fecha este app, atualiza e reabre o app novo."""
+def install_and_restart(installer: Path, sha256: str = "") -> None:
+    """Roda o instalador sem janelas; ele fecha este app, atualiza e reabre o app novo.
+    Com o SHA-256 informado, o arquivo é conferido de novo aqui, no instante de executar."""
+    installer = Path(installer)
+    if sha256 and file_sha256(installer) != sha256.lower():
+        installer.unlink(missing_ok=True)
+        raise RuntimeError("O instalador mudou depois de conferido. Nada foi instalado.")
     flags = 0x00000008 | 0x00000200   # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
     subprocess.Popen([str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/relaunch=1"],
                      creationflags=flags, close_fds=True)

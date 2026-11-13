@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import threading
 
-from lolitos.core.system import data_dir
+from lolitos.core.system import data_dir, write_atomic
 
 _LOCK = threading.RLock()
 DEFAULTS = {
@@ -48,7 +48,9 @@ def load() -> dict:
         if mt != _CACHE["mtime"]:
             try:
                 d = json.loads(f.read_text(encoding="utf-8")) if mt != -1 else {}
-            except (OSError, json.JSONDecodeError):
+            except (OSError, ValueError):
+                d = {}
+            if not isinstance(d, dict):       # arquivo estragado (ou editado à mão): volta ao padrão sem derrubar o app
                 d = {}
             _CACHE.update(mtime=mt, data=d)
         return {**DEFAULTS, **_CACHE["data"]}
@@ -64,7 +66,7 @@ def set(key: str, value) -> None:  # noqa: A001
         data = dict(_CACHE["data"])
         data[key] = value
         f = _file()
-        f.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        write_atomic(f, json.dumps(data, ensure_ascii=False, indent=1))
         try:
             _CACHE.update(mtime=f.stat().st_mtime_ns, data=data)
         except OSError:

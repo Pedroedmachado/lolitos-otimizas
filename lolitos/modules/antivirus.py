@@ -50,6 +50,10 @@ def guide_for(name: str) -> str:
     return "Procure por Exceções, Exclusões ou Aplicativos confiáveis e adicione a pasta do app."
 
 
+def _q(p) -> str:
+    return "'" + str(p).replace("'", "''") + "'"
+
+
 def defender_has_app() -> bool | None:
     r = powershell("(Get-MpPreference).ExclusionPath -join '|'", timeout=60)
     if not r.ok:
@@ -61,10 +65,10 @@ def defender_add_app() -> tuple[bool, str]:
     if not installed_protected():
         return False, ("Só na versão instalada (em Arquivos de Programas). Numa pasta comum qualquer programa "
                        "poderia se esconder ali.")
-    r = powershell(f"Add-MpPreference -ExclusionPath '{app_folder()}'", timeout=60)
+    r = powershell(f"Add-MpPreference -ExclusionPath {_q(app_folder())}", timeout=60)
     return r.ok, (r.err or "").strip()
 
 
 def defender_remove_app() -> tuple[bool, str]:
-    r = powershell(f"Remove-MpPreference -ExclusionPath '{app_folder()}'", timeout=60)
+    r = powershell(f"Remove-MpPreference -ExclusionPath {_q(app_folder())}", timeout=60)
     return r.ok, (r.err or "").strip()

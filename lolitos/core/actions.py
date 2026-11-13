@@ -114,7 +114,9 @@ class Reg(Action):
             else:
                 reg.delete_value(self.hive, self.path, self.name)
                 ck = snap.get("created_key")
-                if ck and reg.tree_empty(self.hive, ck):  # chave criada por nós e que ficou vazia
+                # só apaga chave que faz parte do caminho deste ajuste (o histórico é um arquivo comum no disco)
+                inside = isinstance(ck, str) and (self.path.lower() + "\\").startswith(ck.strip("\\").lower() + "\\")
+                if ck and inside and reg.tree_empty(self.hive, ck):  # chave criada por nós e que ficou vazia
                     reg.delete_tree(self.hive, ck)
         except PermissionError as e:
             raise BlockedError(f"{self.describe()}: acesso negado") from e
@@ -149,8 +151,14 @@ class RegKeyDelete(Action):
         reg.delete_tree(self.hive, self.path)
 
     def revert(self, snap):
-        if snap.get("exists") and snap.get("file") and Path(snap["file"]).exists():
-            _check(run(["reg", "import", snap["file"]]), "importar chave")
+        if not (snap.get("exists") and snap.get("file")):
+            return
+        f = Path(str(snap["file"]))
+        # só importa backup criado por esta ação: dentro da pasta de backups e com o nome que ela dá
+        if f.parent.resolve() != backups_dir().resolve() or not re.fullmatch(r"key-[0-9a-f]{10}\.reg", f.name):
+            raise ActionError("importar chave: o backup registrado no histórico não é desta pasta de backups")
+        if f.exists():
+            _check(run(["reg", "import", str(f)]), "importar chave")
 
 
 # ======================================================================= serviços
@@ -269,6 +277,7 @@ class Task(Action):
 
 # ======================================================================= energia
 _HEX = re.compile(r"0x([0-9a-fA-F]{8})")
+_GUID = re.compile(r"[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}")
 
 
 def active_scheme() -> str | None:
@@ -319,7 +328,10 @@ class Power(Action):
 
     def revert(self, snap):
         if "ac" in snap:
-            self._set(snap["ac"], snap["dc"])
+            try:
+                self._set(int(snap["ac"]), int(snap.get("dc", snap["ac"])))
+            except (TypeError, ValueError):
+                raise ActionError(f"{self.describe()}: valor anterior inválido no histórico") from None
 
 
 ULTIMATE = "e9a42b02-d5df-448d-aa00-03f14749eb61"
@@ -385,6 +397,8 @@ class PowerPlan(Action):
 
     def revert(self, snap):
         prev = snap.get("previous")
+        if not (isinstance(prev, str) and _GUID.fullmatch(prev)):
+            prev = None
         mine = find_scheme_by_name(self.name)
         if prev and prev != mine:
             run(["powercfg", "/setactive", prev])
@@ -552,7 +566,7 @@ class Capability(Action):
 
     def revert(self, snap):
         if "removed" in snap:
-            names = snap["removed"] or []
+            names = [n for n in (snap["removed"] or []) if isinstance(n, str) and re.fullmatch(r"[\w.~\-]+", n)]
         else:                       # registro de versões antigas (antes da 2.4.1): volta o que foi tirado
             names = [n for n, st in self._mine().items() if st.lower() not in CAP_PRESENT]
         if not names:
@@ -654,7 +668,11 @@ class Interfaces(Action):
             reg.write("HKLM", p, self.name, "dword", self.value)
 
     def revert(self, snap):
-        for p, old in snap.get("ifaces", {}).items():
+        base = self.BASE.lower() + "\\"
+        for p, old in (snap.get("ifaces") or {}).items():
+            sub = str(p).lower()[len(base):]
+            if not str(p).lower().startswith(base) or not sub or "\\" in sub:
+                continue          # só valores dentro de Tcpip\Interfaces\<placa>
             if old is None:
                 reg.delete_value("HKLM", p, self.name)
             else:

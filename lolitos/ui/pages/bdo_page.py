@@ -282,7 +282,8 @@ class BdoPage(Page):
                 subprocess.Popen([p])
                 return
         try:
-            subprocess.Popen(["explorer.exe", "shell:AppsFolder\\NVIDIACorp.NVIDIAControlPanel_56jybvy8sckqj!"
+            from lolitos.core.system import system_tool
+            subprocess.Popen([system_tool("explorer.exe"), "shell:AppsFolder\\NVIDIACorp.NVIDIAControlPanel_56jybvy8sckqj!"
                               "NVIDIACorp.NVIDIAControlPanel"])
         except OSError:
             info(self, "Painel NVIDIA", "Não encontrei o Painel de Controle NVIDIA neste PC.")

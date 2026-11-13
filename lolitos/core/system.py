@@ -51,6 +51,29 @@ def resource_path(*parts: str) -> Path:
     return base.joinpath("lolitos", "data", *parts)
 
 
+def write_atomic(path: Path, text: str) -> None:
+    """Grava o arquivo inteiro ou nada: escreve num temporário ao lado e troca. Se o PC desligar no meio, o
+    arquivo antigo continua inteiro (config, histórico e perfis não corrompem)."""
+    import time
+    path = Path(path)
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        try:
+            os.fsync(f.fileno())
+        except OSError:
+            pass
+    for attempt in range(5):          # antivírus/indexador às vezes seguram o arquivo por um instante
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+
+
 def expand(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
@@ -124,11 +147,36 @@ def _decode(b: bytes) -> str:
 
 def _kill_tree(pid: int) -> None:
     try:
-        subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], stdin=subprocess.DEVNULL,
+        subprocess.run([system_tool("taskkill"), "/T", "/F", "/PID", str(pid)], stdin=subprocess.DEVNULL,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
                        creationflags=CREATE_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         pass
+
+
+_SYS_TOOLS: dict[str, str] = {}
+
+
+def system_tool(name: str) -> str:
+    """'reg' → 'C:\\Windows\\System32\\reg.exe'. O app roda como administrador: as ferramentas do Windows são
+    chamadas pelo caminho completo, para um arquivo com o mesmo nome na pasta atual ou no PATH nunca entrar no
+    lugar. O que não é do Windows (winget, ffmpeg…) volta como veio."""
+    if not IS_WIN or os.sep in name or "/" in name or ":" in name:
+        return name
+    key = name.lower()
+    if key not in _SYS_TOOLS:
+        exe = key if key.endswith((".exe", ".com", ".msc", ".cpl")) else key + ".exe"
+        root = os.environ.get("SystemRoot") or r"C:\Windows"
+        found = name
+        for folder in (os.path.join(root, "System32"),
+                       os.path.join(root, "System32", "WindowsPowerShell", "v1.0"),
+                       os.path.join(root, "System32", "wbem"), root):
+            c = os.path.join(folder, exe)
+            if os.path.isfile(c):
+                found = c
+                break
+        _SYS_TOOLS[key] = found
+    return _SYS_TOOLS[key]
 
 
 def run(cmd, timeout: int = 120, shell: bool = False, input_text: str | None = None) -> CmdResult:
@@ -141,6 +189,8 @@ def run(cmd, timeout: int = 120, shell: bool = False, input_text: str | None = N
     if not IS_WIN:
         return CmdResult(1, "", "não é Windows")
     import threading
+    if not shell and isinstance(cmd, (list, tuple)) and cmd:
+        cmd = [system_tool(str(cmd[0])), *cmd[1:]]
     try:
         p = subprocess.Popen(cmd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              stdin=subprocess.PIPE if input_text else subprocess.DEVNULL,
@@ -190,6 +240,7 @@ def launch(cmd: list[str]) -> bool:
     if not IS_WIN:
         return False
     try:
+        cmd = [system_tool(str(cmd[0])), *cmd[1:]]
         subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          close_fds=True, creationflags=0x00000008 | 0x00000200)   # DETACHED | NEW_PROCESS_GROUP
         return True

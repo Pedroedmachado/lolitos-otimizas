@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import inspect
 import time
-import traceback
 
 from PySide6.QtCore import QObject, QRectF, QRunnable, Qt, QThreadPool, Signal, Slot
 from PySide6.QtGui import QColor
@@ -39,7 +38,9 @@ class _Job(QRunnable):
                 pass
             result = self.fn(*self.args, **kw)
         except Exception as e:  # noqa: BLE001
-            traceback.print_exc()
+            import logging
+            logging.getLogger("lolitos.ui").exception("tarefa em segundo plano falhou: %s",
+                                                      getattr(self.fn, "__name__", self.fn))
             try:
                 self.sig.error.emit(f"{type(e).__name__}: {e}")
             except RuntimeError:      # janela já fechada

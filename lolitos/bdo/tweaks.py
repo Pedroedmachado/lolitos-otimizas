@@ -65,7 +65,9 @@ class DefenderExclusion(Action):
 
     def revert(self, snap):
         from lolitos.core.system import powershell
-        powershell(f"Remove-MpPreference -ExclusionPath {_ps_quote(snap.get('path', ''))}", timeout=60)
+        path = snap.get("path")
+        if path and path != "None":
+            powershell(f"Remove-MpPreference -ExclusionPath {_ps_quote(str(path))}", timeout=60)
 
 
 class NvidiaProfile(Action):

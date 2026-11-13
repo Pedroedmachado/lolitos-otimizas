@@ -5,20 +5,41 @@ import logging
 import sys
 
 
+def _setup_logging(path) -> None:
+    """Registro com tamanho limitado (1 MB + 2 antigos) e com os erros que antes sumiam: a versão instalada não
+    tem console, então exceções não tratadas (na interface ou em threads) iam para lugar nenhum."""
+    import threading
+    from logging.handlers import RotatingFileHandler
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    try:
+        h = RotatingFileHandler(str(path), maxBytes=1024 * 1024, backupCount=2, encoding="utf-8", delay=True)
+        h.setFormatter(fmt)
+        root.addHandler(h)
+    except OSError:
+        logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger("lolitos")
+
+    def hook(tp, value, tb):
+        if issubclass(tp, KeyboardInterrupt):
+            return
+        log.error("erro não tratado", exc_info=(tp, value, tb))
+    sys.excepthook = hook
+    threading.excepthook = lambda a: hook(a.exc_type, a.exc_value, a.exc_traceback)
+
+
 def main() -> int:
     from lolitos.core.system import IS_WIN, data_dir, is_admin, migrate_old_data, relaunch_as_admin
 
     migrate_old_data()
 
+    _setup_logging(data_dir() / "lolitos.log")
     if "--weekly-review" in sys.argv:   # tarefa agendada da Revisão semanal: roda sem janela e sai
-        logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
-                            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
         from lolitos.modules import weekly
         return weekly.main_headless()
 
     sys.setswitchinterval(0.001)   # a thread da interface recupera o GIL mais rápido
-    logging.basicConfig(filename=str(data_dir() / "lolitos.log"), level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if IS_WIN and not is_admin() and "--no-admin" not in sys.argv:
         if relaunch_as_admin():
             return 0     # a cópia elevada assume
@@ -54,7 +75,8 @@ def main() -> int:
         def migrate():   # nomes antigos do app: tarefa de inicialização e plano de energia
             from lolitos.core.actions import rename_legacy_power_plans
             from lolitos.modules.startup import ensure_autostart, migrate_old_autostart
-            for fn in (migrate_old_autostart, ensure_autostart, rename_legacy_power_plans):
+            from lolitos.modules.updater import cleanup_leftovers
+            for fn in (migrate_old_autostart, ensure_autostart, rename_legacy_power_plans, cleanup_leftovers):
                 try:
                     fn()
                 except Exception:  # noqa: BLE001

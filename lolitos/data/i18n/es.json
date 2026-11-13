@@ -3032,5 +3032,11 @@
 "O que faz": "Qué hace",
 "Estado": "Estado",
 "reinicie para valer": "reinicia para que valga",
-"sem desfazer": "sin deshacer"
+"sem desfazer": "sin deshacer",
+"importar chave: o backup registrado no histórico não é desta pasta de backups": "importar clave: la copia registrada en el historial no es de esta carpeta de copias",
+"{}: valor anterior inválido no histórico": "{}: valor anterior no válido en el historial",
+"O GitHub não informou o SHA-256 deste instalador, então ele não é instalado automaticamente. Baixe pela página de versões.": "GitHub no informó el SHA-256 de este instalador, así que no se instala automáticamente. Descárgalo desde la página de versiones.",
+"Nome de instalador inesperado; atualização cancelada.": "Nombre de instalador inesperado; actualización cancelada.",
+"O instalador mudou depois de conferido. Nada foi instalado.": "El instalador cambió después de verificarse. No se instaló nada.",
+"Download conferido (tamanho e SHA-256).": "Descarga verificada (tamaño y SHA-256)."
 }

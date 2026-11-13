@@ -1,7 +1,7 @@
 ﻿; Instalador do Chinese Control (Inno Setup 6).
 ; Gerado automaticamente por gerar-instalador.bat — ou abra no Inno Setup e clique em Compile.
 #define AppName "Chinese Control"
-#define AppVersion "2.5.1"
+#define AppVersion "2.5.2"
 #define AppExe "ChineseControl.exe"
 #define AppId "ChineseControl"
 ; nomes antigos do app (até a 1.7.x: Lolitos Control; até a 1.3.x: Lolitos Otimizações)
@@ -94,6 +94,10 @@ Type: filesandordirs; Name: "{autoprograms}\{#PrevName}"
 Type: files; Name: "{app}\{#OldExe}"
 Type: files; Name: "{autodesktop}\{#OldName}.lnk"
 Type: filesandordirs; Name: "{autoprograms}\{#OldName}"
+
+[UninstallDelete]
+; instalador baixado pela atualização automática
+Type: filesandordirs; Name: "{app}\update"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

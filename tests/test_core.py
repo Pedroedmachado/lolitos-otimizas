@@ -899,3 +899,123 @@ def test_tour_walks_all_steps():
         t.show_step(t.i + 1)
     app.processEvents()
     assert closed == [1]
+
+
+# ---------------------------------------------------------------- 2.5.2: auditoria de segurança e robustez
+def test_files_survive_corruption_and_bad_shapes():
+    from lolitos.core import settings
+    from lolitos.core.system import data_dir, write_atomic
+    f = data_dir() / "config.json"
+    f.write_text("[1, 2, 3]", encoding="utf-8")            # formato errado: não derruba, volta ao padrão
+    assert settings.get("theme") == settings.DEFAULTS["theme"]
+    settings.set("theme", "light")
+    assert settings.get("theme") == "light" and not (data_dir() / "config.json.tmp").exists()
+    settings.set("theme", settings.DEFAULTS["theme"])
+    write_atomic(data_dir() / "x.json", "{}")
+    assert (data_dir() / "x.json").read_text(encoding="utf-8") == "{}"
+
+    h = data_dir() / "historico.json"
+    keep = h.read_text(encoding="utf-8") if h.exists() else None
+    try:
+        h.write_text('[{"id": "a", "kind": "tweak"}, 7, {"sem": "id"}]', encoding="utf-8")
+        got = history.load()
+        assert len(got) == 1 and got[0]["undone"] is False and got[0]["snaps"] == []
+        assert history.active_for("nada") is None
+        h.write_text("{ quebrado", encoding="utf-8")
+        assert history.load() == []
+        assert list(data_dir().glob("historico-ilegivel-*.json"))     # a cópia fica para não perder o desfazer
+    finally:
+        for b in data_dir().glob("historico-ilegivel-*.json"):
+            b.unlink()
+        if keep is None:
+            h.unlink(missing_ok=True)
+        else:
+            h.write_text(keep, encoding="utf-8")
+        history.load()
+
+
+def test_undo_ignores_tampered_history():
+    import pytest
+    from lolitos.core.actions import ActionError, Interfaces, Reg, RegKeyDelete
+    from lolitos.core.system import backups_dir
+    if IS_WIN:
+        return
+    # valor fora de Tcpip\Interfaces\<placa>: ignorado
+    Interfaces("TcpAckFrequency", 1).revert({"ifaces": {r"SOFTWARE\Evil": 1, Interfaces.BASE + r"\{a}\sub": 1,
+                                                        Interfaces.BASE + r"\{a}": 5}})
+    assert reg.read("HKLM", r"SOFTWARE\Evil", "TcpAckFrequency") is None
+    assert reg.read("HKLM", Interfaces.BASE + r"\{a}\sub", "TcpAckFrequency") is None
+    assert reg.read("HKLM", Interfaces.BASE + r"\{a}", "TcpAckFrequency") == ("dword", 5)
+    # chave "criada" que não faz parte do caminho do ajuste: não é apagada
+    reg.MEM.create_key("HKCU", r"Software\Outra")
+    Reg("HKCU", r"Software\App\Sub", "v", 1).revert({"exists": False, "created_key": r"Software\Outra"})
+    assert reg.key_exists("HKCU", r"Software\Outra")
+    reg.MEM.create_key("HKCU", r"Software\App2\Sub")
+    Reg("HKCU", r"Software\App2\Sub", "v", 1).revert({"exists": False, "created_key": r"Software\App2"})
+    assert not reg.key_exists("HKCU", r"Software\App2")
+    # .reg de fora da pasta de backups: recusado
+    with pytest.raises(ActionError):
+        RegKeyDelete("HKCU", r"Software\X").revert({"exists": True, "file": r"/tmp/evil.reg"})
+    with pytest.raises(ActionError):
+        RegKeyDelete("HKCU", r"Software\X").revert({"exists": True, "file": str(backups_dir() / "evil.reg")})
+    RegKeyDelete("HKCU", r"Software\X").revert({"exists": True, "file": str(backups_dir() / "key-0123456789.reg")})
+
+
+def test_updater_requires_hash_and_rechecks(tmp_path, monkeypatch):
+    import pytest
+    from lolitos.modules import updater as u
+    base = {"url": "https://github.com/x/y/releases/download/v9/ChineseControl-9.0.0-Setup.exe",
+            "name": "ChineseControl-9.0.0-Setup.exe", "size": 10}
+    with pytest.raises(RuntimeError):
+        u._download({**base, "sha256": ""})
+    with pytest.raises(RuntimeError):
+        u._download({**base, "sha256": "a" * 64, "name": "..\\evil.exe"})
+    f = tmp_path / "ChineseControl-9.0.0-Setup.exe"
+    f.write_bytes(b"abc")
+    assert u.file_sha256(f) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    started = []
+    monkeypatch.setattr(u.subprocess, "Popen", lambda *a, **k: started.append(a))
+    with pytest.raises(RuntimeError):
+        u.install_and_restart(f, "0" * 64)                 # trocado depois de conferido: não roda e é apagado
+    assert not started and not f.exists()
+    f.write_bytes(b"abc")
+    u.install_and_restart(f, u.file_sha256(f))
+    assert len(started) == 1
+
+
+def test_presentmon_only_runs_when_hash_matches(tmp_path, monkeypatch):
+    from lolitos.modules import fps
+    fake = tmp_path / "PresentMon.exe"
+    fake.write_bytes(b"nao sou o presentmon")
+    assert not fps._trusted(fake)
+    import hashlib
+    monkeypatch.setattr(fps, "PM_SHA256", hashlib.sha256(fake.read_bytes()).hexdigest())
+    assert fps._trusted(fake)
+
+
+def test_cleanup_never_follows_links(tmp_path):
+    from lolitos.modules import cleanup
+    outside = tmp_path / "fora"
+    outside.mkdir()
+    (outside / "importante.txt").write_text("x")
+    temp = tmp_path / "temp"
+    temp.mkdir()
+    (temp / "lixo.txt").write_text("y")
+    try:
+        os.symlink(outside, temp / "atalho", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        return
+    t = cleanup.Target("t", "t", "t", [str(temp / "*")])
+    assert cleanup._is_link(temp / "atalho") and not cleanup._is_link(temp / "lixo.txt")
+    cleanup.clean(t)
+    assert (outside / "importante.txt").exists() and not (temp / "atalho").exists() and not (temp / "lixo.txt").exists()
+
+
+def test_system_tools_use_full_path():
+    from lolitos.core import system
+    assert system.system_tool(r"C:\x\reg.exe") == r"C:\x\reg.exe"
+    if IS_WIN:
+        assert system.system_tool("reg").lower().endswith(r"\system32\reg.exe")
+        assert system.system_tool("powershell.exe").lower().endswith(r"\powershell.exe") and \
+            os.path.isabs(system.system_tool("powershell.exe"))
+        assert system.system_tool("winget") == "winget"
