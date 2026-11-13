@@ -3038,5 +3038,6 @@
 "O GitHub não informou o SHA-256 deste instalador, então ele não é instalado automaticamente. Baixe pela página de versões.": "GitHub no informó el SHA-256 de este instalador, así que no se instala automáticamente. Descárgalo desde la página de versiones.",
 "Nome de instalador inesperado; atualização cancelada.": "Nombre de instalador inesperado; actualización cancelada.",
 "O instalador mudou depois de conferido. Nada foi instalado.": "El instalador cambió después de verificarse. No se instaló nada.",
-"Download conferido (tamanho e SHA-256).": "Descarga verificada (tamaño y SHA-256)."
+"Download conferido (tamanho e SHA-256).": "Descarga verificada (tamaño y SHA-256).",
+"TcpAckFrequency=1 e TCPNoDelay=1 nas interfaces de rede: o Windows confirma cada pacote na hora, sem esperar juntar dois (ACK atrasado), e envia pacotes pequenos sem segurar (algoritmo de Nagle). O BDO usa TCP, então isso conta.": "TcpAckFrequency=1 y TCPNoDelay=1 en las interfaces de red: Windows confirma cada paquete al instante, sin esperar a juntar dos (ACK retrasado), y envía los paquetes pequeños sin retenerlos (algoritmo de Nagle). BDO usa TCP, así que esto cuenta."
 }

@@ -68,7 +68,7 @@ def set_value(target: dict[Path, str] | str, base: Path | None = None) -> int:
     want = {p: target for p in cur} if isinstance(target, str) else dict(target)
     n = 0
     for p, v in want.items():
-        if p not in cur or cur[p] == v:
+        if p not in cur or cur[p] == v or not re.fullmatch(r"\d{1,3}", str(v)):
             continue
         raw = p.read_bytes()
         _backup(p, root)

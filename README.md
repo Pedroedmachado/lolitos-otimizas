@@ -48,6 +48,20 @@ A barra lateral é dividida em quatro seções:
 | | **Check-up** | Todos os itens medidos, com Corrigir, exportar relatório e copiar configuração |
 | Sistema | **Restauração / Configurações** | Histórico com desfazer, pontos de restauração; idioma, tema, bandeja, atualizações |
 
+## Novidades da 2.5.3
+
+Verificação de todos os ajustes. Cada um foi aplicado, conferido e desfeito em Windows de verdade (builds 26100 e
+20348, nas máquinas de teste do GitHub): 148 passaram no ciclo completo e nenhum falhou. O que não dá para testar lá
+(remoção de apps e recursos, Black Desert, NVIDIA, Discord) foi revisado no código.
+
+* **Mouse e teclado valem na hora:** "Desligar a aceleração do mouse", sensibilidade, rastro, repetição do teclado,
+  atalhos de acessibilidade, "Menus sem atraso" e o encaixe de janelas apareciam como ativos, mas o Windows só os
+  usava depois de sair e entrar na conta. Agora o app repassa o valor ao sistema ao aplicar e ao desfazer.
+* **Nagle desligado de verdade:** o ajuste só desligava o ACK atrasado (`TcpAckFrequency`). Agora também grava
+  `TCPNoDelay`. Quem já tinha aplicado vê o ajuste como "parcial" até aplicar de novo.
+* **Hibernação:** em PCs que não suportam hibernar, o ajuste deixa de aparecer como pendente (antes o Desfazer
+  falhava neles).
+
 ## Novidades da 2.5.2
 
 Revisão de segurança e de robustez. Nada muda na aparência.
