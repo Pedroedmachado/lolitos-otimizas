@@ -22,6 +22,13 @@ def _blocked_file():
 _CACHE: dict = {"key": None, "data": []}
 
 
+def _stamp(f) -> tuple:
+    """Identidade do arquivo no disco. O tamanho entra junto porque duas gravações no mesmo instante do relógio
+    do Windows (uns 15 ms) ficam com a mesma data de modificação."""
+    st = f.stat()
+    return str(f), st.st_mtime_ns, st.st_size
+
+
 def _norm(e) -> dict | None:
     """Entrada sempre com os campos que o resto do app lê (arquivo antigo, editado à mão ou estragado)."""
     if not isinstance(e, dict) or not e.get("id"):
@@ -51,7 +58,7 @@ def load() -> list[dict]:
     with _LOCK:
         f = _file()
         try:
-            mt = (str(f), f.stat().st_mtime_ns)
+            mt = _stamp(f)
         except OSError:
             _CACHE.update(key=None, data=[])
             return []
@@ -72,7 +79,7 @@ def save(entries: list[dict]) -> None:
         f = _file()
         write_atomic(f, json.dumps(entries, ensure_ascii=False, indent=1))
         try:
-            mt = (str(f), f.stat().st_mtime_ns)
+            mt = _stamp(f)
         except OSError:
             mt = None
         _CACHE.update(key=mt, data=[x for x in (_norm(dict(e)) for e in entries) if x])

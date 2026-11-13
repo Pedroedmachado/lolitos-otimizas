@@ -42,7 +42,8 @@ def load() -> dict:
     with _LOCK:
         f = _file()
         try:
-            mt = f.stat().st_mtime_ns
+            st = f.stat()
+            mt = (st.st_mtime_ns, st.st_size)     # tamanho junto: gravações no mesmo instante têm a mesma data
         except OSError:
             mt = -1
         if mt != _CACHE["mtime"]:
@@ -68,6 +69,7 @@ def set(key: str, value) -> None:  # noqa: A001
         f = _file()
         write_atomic(f, json.dumps(data, ensure_ascii=False, indent=1))
         try:
-            _CACHE.update(mtime=f.stat().st_mtime_ns, data=data)
+            st = f.stat()
+            _CACHE.update(mtime=(st.st_mtime_ns, st.st_size), data=data)
         except OSError:
             _CACHE.update(mtime=None, data=data)
