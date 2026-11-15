@@ -1,0 +1,5 @@
+#!/bin/sh
+# Abre o Chinese Control para Linux a partir desta pasta.
+cd "$(dirname "$(readlink -f "$0")")" || exit 1
+if [ -x .venv/bin/python ]; then exec .venv/bin/python -m lolitos.linux "$@"; fi
+exec python3 -m lolitos.linux "$@"
