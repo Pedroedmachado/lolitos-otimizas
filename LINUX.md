@@ -26,7 +26,7 @@ sudo pacman -S --needed polkit-gnome
 * **Painel:** resumo do PC, quantos ajustes estão ativos e o botão "Aplicar recomendados".
 * **Desempenho:** gráficos ao vivo de processador, memória, placa de vídeo (pelo `nvidia-smi`), disco e rede.
 * **Meu PC:** sistema, processador, memória, placa de vídeo, placa-mãe e discos.
-* **Ajustes:** 20 ajustes com aplicar e desfazer (governador e preferência de energia do processador, parâmetros de
+* **Ajustes:** 19 ajustes com aplicar e desfazer (governador e preferência de energia do processador, parâmetros de
   memória do kernel, agendador do NVMe, TCP, cache de shaders da NVIDIA, instalação do GameMode e do MangoHud).
 * **Jogos:** biblioteca da Steam e a linha de opções de inicialização pronta para copiar.
 * **MangoHud:** escolhe o que aparece na tela e grava o `MangoHud.conf`.
